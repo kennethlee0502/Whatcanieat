@@ -1,9 +1,15 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import type { Dispatch } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+} from "react";
 
 import styles from "@/app/app/app.module.css";
+import { CaptureFlow } from "@/app/app/capture-flow";
 import { ProfileSetup } from "@/app/app/profile-setup";
 import {
   type ApplicationEvent,
@@ -11,18 +17,30 @@ import {
 } from "@/application/state";
 import { useApplicationState } from "@/application/use-application-state";
 import type { UserProfile } from "@/domain/profile";
+import {
+  createImageLifecycle,
+  type ImageLifecycle,
+  type PreparedImage,
+} from "@/lib/image-lifecycle";
 import type { ProfileStorageOperationResult } from "@/storage/profile-storage";
+
+type ImageFlowController = Readonly<{
+  lifecycle: ImageLifecycle;
+  preparedImage: PreparedImage | null;
+}>;
 
 type ApplicationViewProps = Readonly<{
   state: ApplicationState;
   dispatch: Dispatch<ApplicationEvent>;
   saveProfile: (profile: UserProfile) => ProfileStorageOperationResult;
+  imageFlow?: ImageFlowController;
 }>;
 
 export const ApplicationView = ({
   state,
   dispatch,
   saveProfile,
+  imageFlow,
 }: ApplicationViewProps) => {
   const prefersReducedMotion = useReducedMotion();
 
@@ -113,20 +131,26 @@ export const ApplicationView = ({
     );
   }
 
-  if (state.kind === "capture") {
+  if (
+    imageFlow &&
+    (state.kind === "capture" ||
+      state.kind === "preparingImage" ||
+      state.kind === "preview" ||
+      state.kind === "error")
+  ) {
     return (
       <div className={`app-canvas ${styles.canvas}`}>
-        <main className={`content-shell ${styles.developmentBoundary}`}>
-          <p className={styles.brand}>Can / I Eat This?</p>
-          <p>Your temporary profile is ready.</p>
-          <button
-            className={styles.secondaryAction}
-            type="button"
-            onClick={() => dispatch({ type: "profileEditRequested" })}
-          >
-            Edit profile
-          </button>
-        </main>
+        <CaptureFlow
+          state={state}
+          dispatch={dispatch}
+          imageLifecycle={imageFlow.lifecycle}
+          preparedImage={imageFlow.preparedImage}
+          onEditProfile={
+            state.kind === "capture"
+              ? () => dispatch({ type: "profileEditRequested" })
+              : undefined
+          }
+        />
       </div>
     );
   }
@@ -141,14 +165,77 @@ export const ApplicationView = ({
   );
 };
 
-export const AppExperience = () => {
-  const { state, dispatch, saveProfile } = useApplicationState();
+type AppExperienceProps = Readonly<{
+  createLifecycle?: typeof createImageLifecycle;
+}>;
 
-  return (
+export const AppExperience = ({
+  createLifecycle = createImageLifecycle,
+}: AppExperienceProps = {}) => {
+  const { state, dispatch, saveProfile } = useApplicationState();
+  const lifecycleRef = useRef<ImageLifecycle | null>(null);
+  const [imageFlow, setImageFlow] = useState<ImageFlowController | null>(null);
+
+  useEffect(() => {
+    const lifecycle = createLifecycle({
+      onSelected: (imageId) => {
+        setImageFlow((current) =>
+          current?.lifecycle === lifecycle
+            ? { lifecycle, preparedImage: null }
+            : current,
+        );
+        dispatch({ type: "imageSelected", imageId });
+      },
+      onPrepared: (imageId, image) => {
+        setImageFlow((current) =>
+          current?.lifecycle === lifecycle
+            ? { lifecycle, preparedImage: image }
+            : current,
+        );
+        dispatch({ type: "imagePrepared", imageId });
+      },
+      onFailed: (imageId, error) => {
+        setImageFlow((current) =>
+          current?.lifecycle === lifecycle
+            ? { lifecycle, preparedImage: null }
+            : current,
+        );
+        dispatch({ type: "imagePreparationFailed", imageId, error });
+      },
+      onCanceled: (imageId) => {
+        dispatch({ type: "imagePreparationCanceled", imageId });
+      },
+      onRemoved: (imageId) => {
+        setImageFlow((current) =>
+          current?.lifecycle === lifecycle
+            ? { lifecycle, preparedImage: null }
+            : current,
+        );
+        dispatch({ type: "imageRemoved", imageId });
+      },
+    });
+
+    lifecycleRef.current = lifecycle;
+    queueMicrotask(() => {
+      if (lifecycleRef.current === lifecycle) {
+        setImageFlow({ lifecycle, preparedImage: null });
+      }
+    });
+
+    return () => {
+      lifecycle.dispose();
+      if (lifecycleRef.current === lifecycle) {
+        lifecycleRef.current = null;
+      }
+    };
+  }, [createLifecycle, dispatch]);
+
+  return imageFlow ? (
     <ApplicationView
       state={state}
       dispatch={dispatch}
       saveProfile={saveProfile}
+      imageFlow={imageFlow}
     />
-  );
+  ) : null;
 };
