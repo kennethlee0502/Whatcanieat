@@ -1,0 +1,130 @@
+.canvas {
+  display: flex;
+}
+
+.brand {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-instrument-serif), serif;
+  font-size: 1.375rem;
+  line-height: 1.1;
+}
+
+.restoring,
+.welcome,
+.developmentBoundary {
+  min-height: calc(100vh - var(--space-12));
+  min-height: calc(100dvh - var(--space-12));
+}
+
+.restoring {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.restoringStatus {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+}
+
+.welcome {
+  display: flex;
+  flex-direction: column;
+}
+
+.introduction {
+  margin-top: clamp(var(--space-12), 13dvh, 7.5rem);
+}
+
+.title {
+  max-width: 10ch;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-instrument-serif), serif;
+  font-size: clamp(2.75rem, 13vw, 3.25rem);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.summary {
+  max-width: 36ch;
+  margin: var(--space-8) 0 0;
+  color: var(--color-text-secondary);
+  font-size: 1.125rem;
+  line-height: 1.55;
+}
+
+.scope {
+  max-width: 40ch;
+  margin: var(--space-5) 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.actionGroup {
+  margin-top: var(--space-10);
+}
+
+.primaryAction {
+  width: 100%;
+  min-height: 3.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-medium);
+  background: var(--color-action-primary);
+  color: var(--color-action-primary-text);
+  font-size: 1rem;
+  font-weight: 600;
+  transition:
+    background-color var(--motion-small) var(--ease-standard),
+    transform var(--motion-press) var(--ease-standard);
+}
+
+.primaryAction:hover {
+  background: var(--color-action-primary-hover);
+}
+
+.primaryAction:active {
+  background: var(--color-action-primary-active);
+  transform: translateY(1px);
+}
+
+.disclosures {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-12);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.disclosures p {
+  margin: 0;
+}
+
+.developmentBoundary {
+  display: grid;
+  align-content: center;
+  gap: var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+.developmentBoundary p {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primaryAction {
+    transition: none;
+  }
+
+  .primaryAction:active {
+    transform: none;
+  }
+}
