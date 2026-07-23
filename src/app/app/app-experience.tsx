@@ -12,6 +12,7 @@ import styles from "@/app/app/app.module.css";
 import { AnalysisFlow } from "@/app/app/analysis-flow";
 import { CaptureFlow } from "@/app/app/capture-flow";
 import { ProfileSetup } from "@/app/app/profile-setup";
+import { ResultFlow } from "@/app/app/result-flow";
 import {
   type ApplicationEvent,
   type ApplicationState,
@@ -208,6 +209,19 @@ export const ApplicationView = ({
           onCancel={(requestId) =>
             dispatch({ type: "analysisCanceled", requestId })
           }
+        />
+      </div>
+    );
+  }
+
+  if (imageFlow && state.kind === "result" && imageFlow.preparedImage) {
+    return (
+      <div className={`app-canvas ${styles.canvas}`}>
+        <ResultFlow
+          preparedImage={imageFlow.preparedImage}
+          facts={state.facts}
+          evaluation={state.evaluation}
+          onNewScan={() => dispatch({ type: "newScanRequested" })}
         />
       </div>
     );

@@ -219,6 +219,34 @@ describe("ApplicationView", () => {
     );
   });
 
+  it("renders the accepted result and dispatches the existing new-scan transition", async () => {
+    const user = userEvent.setup();
+    const dispatch = vi.fn();
+    const response = syntheticAnalysisResponses.safe;
+    render(
+      <ApplicationView
+        state={{
+          kind: "result",
+          profile,
+          image: { id: "image-1" },
+          facts: response.facts,
+          evaluation: response.evaluation,
+        }}
+        dispatch={dispatch}
+        saveProfile={saveProfile}
+        imageFlow={{ lifecycle, preparedImage }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "What we saw" }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Check another food" }),
+    );
+    expect(dispatch).toHaveBeenCalledWith({ type: "newScanRequested" });
+  });
+
   it("owns one lifecycle across rerenders and ignores visibility changes", () => {
     application.state = { kind: "capture", profile };
     const createLifecycle = vi.fn().mockReturnValue(lifecycle);
