@@ -4,6 +4,7 @@ import {
   analysisResponseSchema,
 } from "@/domain/analysis";
 import type { ExtractedFoodFacts } from "@/domain/food";
+import type { ClientAnalysis } from "@/lib/client-analysis";
 import { evaluateFood } from "@/rules/engine";
 
 const identityEvidence = {
@@ -148,9 +149,7 @@ export const syntheticAnalysisResponses = {
   ),
 } as const satisfies Readonly<Record<string, AnalysisResponse>>;
 
-export type MockAnalysis = (
-  signal: AbortSignal,
-) => Promise<AnalysisResponse>;
+export type MockAnalysis = ClientAnalysis;
 
 type MockAnalysisOptions = Readonly<{
   delayMs?: number;
@@ -163,7 +162,7 @@ export const createMockAnalysis = ({
   response: selectedResponse = syntheticAnalysisResponses.needMoreInformation,
   error,
 }: MockAnalysisOptions = {}): MockAnalysis => {
-  return (signal) =>
+  return (_preparedImage, _profile, signal) =>
     new Promise<AnalysisResponse>((resolve, reject) => {
       if (signal.aborted) {
         reject(new DOMException("Analysis canceled", "AbortError"));

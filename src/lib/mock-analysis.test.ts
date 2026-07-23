@@ -5,6 +5,24 @@ import {
   createMockAnalysis,
   syntheticAnalysisResponses,
 } from "@/lib/mock-analysis";
+import type { PreparedImage } from "@/lib/image-lifecycle";
+import type { UserProfile } from "@/domain/profile";
+
+const preparedImage = {
+  blob: new Blob(["prepared"], { type: "image/jpeg" }),
+  objectUrl: "blob:prepared",
+  width: 1200,
+  height: 900,
+  mimeType: "image/jpeg",
+  sizeBytes: 8,
+} satisfies PreparedImage;
+
+const profile: UserProfile = {
+  pregnancy: { status: "notPregnant" },
+  allergies: [],
+  highBloodPressure: false,
+  diet: "none",
+};
 
 afterEach(() => {
   vi.useRealTimers();
@@ -34,7 +52,11 @@ describe("mock analysis", () => {
       delayMs: 200,
       response: syntheticAnalysisResponses.avoid,
     });
-    const completion = analyze(new AbortController().signal);
+    const completion = analyze(
+      preparedImage,
+      profile,
+      new AbortController().signal,
+    );
 
     await vi.advanceTimersByTimeAsync(199);
     let settled = false;
@@ -52,6 +74,8 @@ describe("mock analysis", () => {
     vi.useFakeTimers();
     const error = { code: "providerUnavailable", retryable: true } as const;
     const completion = createMockAnalysis({ delayMs: 10, error })(
+      preparedImage,
+      profile,
       new AbortController().signal,
     );
     const rejection = expect(completion).rejects.toBe(error);
@@ -64,6 +88,8 @@ describe("mock analysis", () => {
     vi.useFakeTimers();
     const controller = new AbortController();
     const completion = createMockAnalysis({ delayMs: 10_000 })(
+      preparedImage,
+      profile,
       controller.signal,
     );
 

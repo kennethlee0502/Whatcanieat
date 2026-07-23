@@ -20,15 +20,15 @@ import {
 import { useApplicationState } from "@/application/use-application-state";
 import type { UserProfile } from "@/domain/profile";
 import {
+  requestAnalysis,
+  type ClientAnalysis,
+} from "@/lib/client-analysis";
+import {
   createImageLifecycle,
   type ImageLifecycle,
   type PreparedImage,
 } from "@/lib/image-lifecycle";
 import type { ProfileStorageOperationResult } from "@/storage/profile-storage";
-import {
-  mockAnalysis,
-  type MockAnalysis,
-} from "@/lib/mock-analysis";
 
 type ImageFlowController = Readonly<{
   lifecycle: ImageLifecycle;
@@ -40,7 +40,7 @@ type ApplicationViewProps = Readonly<{
   dispatch: Dispatch<ApplicationEvent>;
   saveProfile: (profile: UserProfile) => ProfileStorageOperationResult;
   imageFlow?: ImageFlowController;
-  analyze?: MockAnalysis;
+  analyze?: ClientAnalysis;
   createRequestId?: () => string;
 }>;
 
@@ -49,7 +49,7 @@ export const ApplicationView = ({
   dispatch,
   saveProfile,
   imageFlow,
-  analyze = mockAnalysis,
+  analyze = requestAnalysis,
   createRequestId = () => crypto.randomUUID(),
 }: ApplicationViewProps) => {
   const prefersReducedMotion = useReducedMotion();
@@ -194,6 +194,7 @@ export const ApplicationView = ({
         <AnalysisFlow
           requestId={state.requestId}
           preparedImage={imageFlow.preparedImage}
+          profile={state.profile}
           analyze={analyze}
           onSuccess={(requestId, response) =>
             dispatch({
@@ -239,13 +240,13 @@ export const ApplicationView = ({
 
 type AppExperienceProps = Readonly<{
   createLifecycle?: typeof createImageLifecycle;
-  analyze?: MockAnalysis;
+  analyze?: ClientAnalysis;
   createRequestId?: () => string;
 }>;
 
 export const AppExperience = ({
   createLifecycle = createImageLifecycle,
-  analyze = mockAnalysis,
+  analyze = requestAnalysis,
   createRequestId,
 }: AppExperienceProps = {}) => {
   const { state, dispatch, saveProfile } = useApplicationState();

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AnalysisFlow } from "@/app/app/analysis-flow";
 import type { AnalysisResponse } from "@/domain/analysis";
+import type { UserProfile } from "@/domain/profile";
 import type { PreparedImage } from "@/lib/image-lifecycle";
 import {
   syntheticAnalysisResponses,
@@ -48,6 +49,13 @@ const preparedImage: PreparedImage = {
   sizeBytes: 8,
 };
 
+const profile: UserProfile = {
+  pregnancy: { status: "notPregnant" },
+  allergies: [],
+  highBloodPressure: false,
+  diet: "none",
+};
+
 const pendingAnalysis = () => {
   let resolve!: (response: AnalysisResponse) => void;
   let reject!: (reason: unknown) => void;
@@ -55,7 +63,7 @@ const pendingAnalysis = () => {
     resolve = resolvePromise;
     reject = rejectPromise;
   });
-  const analyze = vi.fn(() => promise);
+  const analyze = vi.fn<MockAnalysis>(() => promise);
   return { analyze, resolve, reject };
 };
 
@@ -69,6 +77,7 @@ const renderFlow = (analyze: MockAnalysis) => {
     <AnalysisFlow
       requestId="request-1"
       preparedImage={preparedImage}
+      profile={profile}
       analyze={analyze}
       {...callbacks}
     />,
@@ -136,7 +145,7 @@ describe("AnalysisFlow", () => {
   it("aborts pending work and reports cancellation with request identity", async () => {
     const user = userEvent.setup();
     let receivedSignal: AbortSignal | undefined;
-    const analyze = vi.fn((signal: AbortSignal) => {
+    const analyze = vi.fn((_image, _profile, signal: AbortSignal) => {
       receivedSignal = signal;
       return new Promise<AnalysisResponse>(() => undefined);
     });
@@ -180,7 +189,7 @@ describe("AnalysisFlow", () => {
     vi.useFakeTimers();
     const clearTimeout = vi.spyOn(window, "clearTimeout");
     let receivedSignal: AbortSignal | undefined;
-    const analyze = vi.fn((signal: AbortSignal) => {
+    const analyze = vi.fn((_image, _profile, signal: AbortSignal) => {
       receivedSignal = signal;
       return new Promise<AnalysisResponse>(() => undefined);
     });
@@ -191,5 +200,50 @@ describe("AnalysisFlow", () => {
 
     expect(receivedSignal?.aborted).toBe(true);
     expect(clearTimeout).toHaveBeenCalledTimes(5);
+  });
+
+  it("aborts an older request and ignores its stale completion", async () => {
+    const first = pendingAnalysis();
+    const second = pendingAnalysis();
+    const analyze = vi
+      .fn()
+      .mockImplementationOnce(first.analyze)
+      .mockImplementationOnce(second.analyze);
+    const callbacks = {
+      onSuccess: vi.fn(),
+      onFailure: vi.fn(),
+      onCancel: vi.fn(),
+    };
+    const { rerender } = render(
+      <AnalysisFlow
+        requestId="request-1"
+        preparedImage={preparedImage}
+        profile={profile}
+        analyze={analyze}
+        {...callbacks}
+      />,
+    );
+
+    rerender(
+      <AnalysisFlow
+        requestId="request-2"
+        preparedImage={preparedImage}
+        profile={profile}
+        analyze={analyze}
+        {...callbacks}
+      />,
+    );
+
+    await act(async () => {
+      first.resolve(syntheticAnalysisResponses.avoid);
+      second.resolve(syntheticAnalysisResponses.safe);
+      await Promise.resolve();
+    });
+
+    expect(callbacks.onSuccess).toHaveBeenCalledOnce();
+    expect(callbacks.onSuccess).toHaveBeenCalledWith(
+      "request-2",
+      syntheticAnalysisResponses.safe,
+    );
   });
 });

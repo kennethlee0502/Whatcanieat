@@ -6,8 +6,9 @@ import { useEffect, useRef, useState } from "react";
 import styles from "@/app/app/analysis-flow.module.css";
 import type { AnalysisError } from "@/domain/analysis";
 import type { AnalysisResponse } from "@/domain/analysis";
+import type { UserProfile } from "@/domain/profile";
+import type { ClientAnalysis } from "@/lib/client-analysis";
 import type { PreparedImage } from "@/lib/image-lifecycle";
-import type { MockAnalysis } from "@/lib/mock-analysis";
 
 const ANALYSIS_MESSAGES = [
   "Looking closely at the food",
@@ -23,7 +24,8 @@ const SLOW_RESPONSE_DELAY_MS = 8_000;
 type AnalysisFlowProps = Readonly<{
   requestId: string;
   preparedImage: PreparedImage;
-  analyze: MockAnalysis;
+  profile: UserProfile;
+  analyze: ClientAnalysis;
   onSuccess: (requestId: string, response: AnalysisResponse) => void;
   onFailure: (requestId: string, error: AnalysisError) => void;
   onCancel: (requestId: string) => void;
@@ -38,6 +40,7 @@ const isAnalysisError = (error: unknown): error is AnalysisError =>
 export const AnalysisFlow = ({
   requestId,
   preparedImage,
+  profile,
   analyze,
   onSuccess,
   onFailure,
@@ -76,23 +79,29 @@ export const AnalysisFlow = ({
     const controller = new AbortController();
     controllerRef.current = controller;
 
-    void analyze(controller.signal).then(
-      (analysisResponse) => {
-        if (!controller.signal.aborted) {
-          onSuccess(requestId, analysisResponse);
+    void analyze(preparedImage, profile, controller.signal)
+      .then(
+        (analysisResponse) => {
+          if (!controller.signal.aborted) {
+            onSuccess(requestId, analysisResponse);
+          }
+        },
+        (error: unknown) => {
+          if (!controller.signal.aborted) {
+            onFailure(
+              requestId,
+              isAnalysisError(error)
+                ? error
+                : { code: "evaluationFailed", retryable: true },
+            );
+          }
+        },
+      )
+      .finally(() => {
+        if (controllerRef.current === controller) {
+          controllerRef.current = null;
         }
-      },
-      (error: unknown) => {
-        if (!controller.signal.aborted) {
-          onFailure(
-            requestId,
-            isAnalysisError(error)
-              ? error
-              : { code: "evaluationFailed", retryable: true },
-          );
-        }
-      },
-    );
+      });
 
     return () => {
       controller.abort();
@@ -100,10 +109,19 @@ export const AnalysisFlow = ({
         controllerRef.current = null;
       }
     };
-  }, [analyze, onFailure, onSuccess, requestId]);
+  }, [
+    analyze,
+    onFailure,
+    onSuccess,
+    preparedImage,
+    profile,
+    requestId,
+  ]);
 
   const cancel = () => {
-    controllerRef.current?.abort();
+    const controller = controllerRef.current;
+    controllerRef.current = null;
+    controller?.abort();
     onCancel(requestId);
   };
 
