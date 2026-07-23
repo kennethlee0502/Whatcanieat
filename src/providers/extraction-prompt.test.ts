@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  assembleExtractionPrompt,
   EXTRACTION_PROMPT_POLICY,
   EXTRACTION_PROMPT_POLICY_VERSION,
   extractionPromptInputSchema,
@@ -75,5 +76,24 @@ describe("server-owned extraction prompt policy", () => {
     expect(policy).toContain("personalized medical guidance");
     expect(policy).toContain("explicitly as unknown");
     expect(policy).toContain("Preserve contradictory claims");
+  });
+
+  it("assembles the versioned policy with only minimized context", () => {
+    const prompt = assembleExtractionPrompt({
+      promptPolicyVersion: EXTRACTION_PROMPT_POLICY_VERSION,
+      extractionSchemaVersion: 1,
+      profile: {
+        allergies: [{ allergenId: "peanut" }],
+        diet: "vegan",
+      },
+    });
+
+    expect(prompt).toContain(
+      `Prompt policy version: ${EXTRACTION_PROMPT_POLICY_VERSION}`,
+    );
+    expect(prompt).toContain("Extraction schema version: 1");
+    expect(prompt).toContain('"allergenId":"peanut"');
+    expect(prompt).toContain('"diet":"vegan"');
+    expect(prompt).not.toContain("measurements");
   });
 });

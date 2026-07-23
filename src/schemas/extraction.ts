@@ -1,14 +1,16 @@
 import { z } from "zod";
 
 import {
+  donenessStatusSchema,
   evidenceSourceSchema,
   evidenceStrengthSchema,
   factContradictionSchema,
   imageSuitabilitySchema,
   ingredientPresenceSchema,
   labelEvidenceSchema,
-  nutritionSignalsSchema,
-  preparationFactsSchema,
+  pasteurizationStatusSchema,
+  sodiumLevelSchema,
+  ternaryFactSchema,
   uncertaintySchema,
 } from "@/domain/food";
 import {
@@ -46,6 +48,34 @@ export const rawIngredientClaimSchema = z
     id: domainIdentifierSchema,
     name: z.string().trim().min(1).max(160),
     presence: ingredientPresenceSchema,
+    evidenceIds: evidenceIdsSchema,
+  })
+  .strict();
+
+export const rawPreparationFactsSchema = z
+  .object({
+    pasteurization: pasteurizationStatusSchema,
+    doneness: donenessStatusSchema,
+    rawAnimalProduct: ternaryFactSchema,
+    cookingMethod: z.string().trim().min(1).max(120).nullable(),
+    internalTemperature: z
+      .object({
+        value: z.number().finite(),
+        unit: z.enum(["celsius", "fahrenheit"]),
+        evidenceIds: evidenceIdsSchema,
+      })
+      .strict()
+      .nullable(),
+    evidenceIds: evidenceIdsSchema,
+  })
+  .strict();
+
+export const rawNutritionSignalsSchema = z
+  .object({
+    sodiumLevel: sodiumLevelSchema,
+    sodiumMilligrams: z.number().nonnegative().finite().nullable(),
+    servingDescription: z.string().trim().min(1).max(160).nullable(),
+    highlyProcessed: ternaryFactSchema,
     evidenceIds: evidenceIdsSchema,
   })
   .strict();
@@ -129,15 +159,15 @@ const addEvidenceReferenceIssues = (
   });
 };
 
-const rawExtractionObjectSchema = z
+export const rawExtractionStructuredOutputSchema = z
   .object({
     schemaVersion: z.literal(RAW_EXTRACTION_SCHEMA_VERSION),
     imageSuitability: imageSuitabilitySchema,
     foodCandidates: z.array(rawFoodCandidateSchema).max(10),
     primaryFoodReference: domainIdentifierSchema.nullable(),
     ingredientClaims: z.array(rawIngredientClaimSchema).max(100),
-    preparation: preparationFactsSchema,
-    nutrition: nutritionSignalsSchema,
+    preparation: rawPreparationFactsSchema,
+    nutrition: rawNutritionSignalsSchema,
     labels: z.array(labelEvidenceSchema).max(20),
     evidence: z.array(rawExtractionEvidenceSchema).max(200),
     uncertainties: z.array(uncertaintySchema).max(100),
@@ -146,7 +176,7 @@ const rawExtractionObjectSchema = z
   })
   .strict();
 
-export const rawExtractionSchema = rawExtractionObjectSchema.superRefine(
+export const rawExtractionSchema = rawExtractionStructuredOutputSchema.superRefine(
   (extraction, refinementContext) => {
     addUniqueIdIssues(
       [
@@ -312,4 +342,6 @@ export type RawExtractionEvidence = z.infer<
 >;
 export type RawFoodCandidate = z.infer<typeof rawFoodCandidateSchema>;
 export type RawIngredientClaim = z.infer<typeof rawIngredientClaimSchema>;
-export type RawExtraction = z.infer<typeof rawExtractionObjectSchema>;
+export type RawExtraction = z.infer<
+  typeof rawExtractionStructuredOutputSchema
+>;
