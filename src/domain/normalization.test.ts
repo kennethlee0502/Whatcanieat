@@ -5,8 +5,13 @@ import {
   canonicalizeTerm,
   normalizeAllergyProfile,
   normalizeExtractedFoodFacts,
+  normalizeRawExtraction,
   resolveCanonicalTerm,
 } from "@/domain/normalization";
+import {
+  contradictoryRawExtractionFixture,
+  validRawExtractionFixture,
+} from "@/test-fixtures/extraction";
 
 const facts: ExtractedFoodFacts = {
   schemaVersion: 1,
@@ -91,6 +96,64 @@ const facts: ExtractedFoodFacts = {
 };
 
 describe("canonical normalization", () => {
+  it("converts validated raw extraction into normalized domain facts", () => {
+    const normalized = normalizeRawExtraction({
+      ...validRawExtractionFixture,
+      foodCandidates: [
+        {
+          ...validRawExtractionFixture.foodCandidates[0],
+          displayName: "Groundnut Stew",
+        },
+      ],
+      ingredientClaims: [
+        {
+          ...validRawExtractionFixture.ingredientClaims[0],
+          name: "Groundnuts",
+        },
+      ],
+    });
+
+    expect(normalized).toMatchObject({
+      schemaVersion: 1,
+      primaryFoodId: "food-1",
+      foodCandidates: [{ canonicalName: "groundnut-stew" }],
+      ingredients: [
+        {
+          ingredientId: "peanut",
+          displayName: "Groundnuts",
+          presence: "confirmed",
+        },
+      ],
+      preparation: {
+        cookingMethod: undefined,
+        internalTemperature: undefined,
+      },
+      nutrition: {
+        sodiumMilligrams: undefined,
+        servingDescription: undefined,
+      },
+    });
+  });
+
+  it("preserves raw evidence, uncertainty, contradictions, and confidence", () => {
+    const normalized = normalizeRawExtraction(
+      contradictoryRawExtractionFixture,
+    );
+
+    expect(normalized.evidence).toEqual(
+      contradictoryRawExtractionFixture.evidence,
+    );
+    expect(normalized.uncertainties).toEqual(
+      contradictoryRawExtractionFixture.uncertainties,
+    );
+    expect(normalized.contradictions).toEqual(
+      contradictoryRawExtractionFixture.contradictions,
+    );
+    expect(normalized.extractionConfidence).toBe(
+      contradictoryRawExtractionFixture.extractionConfidence,
+    );
+  });
+
   it("canonicalizes case, spacing, punctuation, and Unicode consistently", () => {
     expect(canonicalizeTerm("  Sesame Seeds  ")).toBe("sesame-seeds");
     expect(canonicalizeTerm("Chef’s Sauce")).toBe("chefs-sauce");

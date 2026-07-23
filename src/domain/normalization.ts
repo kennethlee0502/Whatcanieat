@@ -4,7 +4,12 @@ import type {
   NutritionSignals,
   PreparationFacts,
 } from "@/domain/food";
+import {
+  FOOD_FACTS_SCHEMA_VERSION,
+  extractedFoodFactsSchema,
+} from "@/domain/food";
 import type { AllergyProfile } from "@/domain/profile";
+import type { RawExtraction } from "@/schemas/extraction";
 
 export type CanonicalAliases = Readonly<Record<string, string>>;
 
@@ -134,3 +139,75 @@ export const normalizeExtractedFoodFacts = (
     })),
   })),
 });
+
+export const normalizeRawExtraction = (
+  extraction: RawExtraction,
+): ExtractedFoodFacts => {
+  const facts: ExtractedFoodFacts = {
+    schemaVersion: FOOD_FACTS_SCHEMA_VERSION,
+    imageSuitability: extraction.imageSuitability,
+    foodCandidates: extraction.foodCandidates.map((candidate) => {
+      const canonicalName = canonicalizeTerm(candidate.displayName);
+
+      return {
+        ...candidate,
+        canonicalName: canonicalName || undefined,
+        evidenceIds: [...candidate.evidenceIds],
+      };
+    }),
+    primaryFoodId: extraction.primaryFoodReference,
+    ingredients: extraction.ingredientClaims.map((ingredient) => ({
+      id: ingredient.id,
+      ingredientId:
+        canonicalizeTerm(ingredient.name) || ingredient.name,
+      displayName: ingredient.name,
+      presence: ingredient.presence,
+      evidenceIds: [...ingredient.evidenceIds],
+    })),
+    preparation: {
+      pasteurization: extraction.preparation.pasteurization,
+      doneness: extraction.preparation.doneness,
+      rawAnimalProduct: extraction.preparation.rawAnimalProduct,
+      cookingMethod: extraction.preparation.cookingMethod ?? undefined,
+      internalTemperature: extraction.preparation.internalTemperature
+        ? {
+            ...extraction.preparation.internalTemperature,
+            evidenceIds: [
+              ...extraction.preparation.internalTemperature.evidenceIds,
+            ],
+          }
+        : undefined,
+      evidenceIds: [...extraction.preparation.evidenceIds],
+    },
+    nutrition: {
+      sodiumLevel: extraction.nutrition.sodiumLevel,
+      sodiumMilligrams:
+        extraction.nutrition.sodiumMilligrams ?? undefined,
+      servingDescription:
+        extraction.nutrition.servingDescription ?? undefined,
+      highlyProcessed: extraction.nutrition.highlyProcessed,
+      evidenceIds: [...extraction.nutrition.evidenceIds],
+    },
+    labels: extraction.labels.map((label) => ({
+      ...label,
+      evidenceIds: [...label.evidenceIds],
+    })),
+    evidence: extraction.evidence.map((evidence) => ({ ...evidence })),
+    uncertainties: extraction.uncertainties.map((uncertainty) => ({
+      ...uncertainty,
+      relatedFactIds: [...uncertainty.relatedFactIds],
+    })),
+    contradictions: extraction.contradictions.map((contradiction) => ({
+      ...contradiction,
+      competingClaims: contradiction.competingClaims.map((claim) => ({
+        ...claim,
+        evidenceIds: [...claim.evidenceIds],
+      })),
+    })),
+    extractionConfidence: extraction.extractionConfidence,
+  };
+
+  return extractedFoodFactsSchema.parse(
+    normalizeExtractedFoodFacts(facts),
+  );
+};
