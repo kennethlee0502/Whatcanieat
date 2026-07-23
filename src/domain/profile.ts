@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { domainIdentifierSchema } from "@/domain/primitives";
 
+export const STORED_PROFILE_SCHEMA_VERSION = 1 as const;
+
 const labelSchema = z.string().trim().min(1).max(120);
 
 export const allergySeveritySchema = z.enum([
@@ -62,6 +64,13 @@ export const userProfileSchema = z
   })
   .strict();
 
+export const storedProfileEnvelopeSchema = z
+  .object({
+    schemaVersion: z.literal(STORED_PROFILE_SCHEMA_VERSION),
+    profile: userProfileSchema,
+  })
+  .strict();
+
 const analysisPregnancySchema = z
   .object({
     week: z.number().int().min(1).max(42).optional(),
@@ -90,6 +99,9 @@ export type PregnancyProfile = z.infer<typeof pregnancyProfileSchema>;
 export type DietPreference = z.infer<typeof dietPreferenceSchema>;
 export type BodyMeasurements = z.infer<typeof bodyMeasurementsSchema>;
 export type UserProfile = z.infer<typeof userProfileSchema>;
+export type StoredProfileEnvelope = z.infer<
+  typeof storedProfileEnvelopeSchema
+>;
 export type AnalysisProfileContext = z.infer<
   typeof analysisProfileContextSchema
 >;

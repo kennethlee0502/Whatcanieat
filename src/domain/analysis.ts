@@ -4,12 +4,10 @@ import { evaluationResultSchema } from "@/domain/evaluation";
 import { extractedFoodFactsSchema } from "@/domain/food";
 import {
   analysisProfileContextSchema,
-  userProfileSchema,
 } from "@/domain/profile";
 
 export const ANALYSIS_REQUEST_SCHEMA_VERSION = 1 as const;
 export const ANALYSIS_RESPONSE_SCHEMA_VERSION = 1 as const;
-export const STORED_PROFILE_SCHEMA_VERSION = 1 as const;
 
 export const analysisImageMetadataSchema = z
   .object({
@@ -31,13 +29,6 @@ export const analysisResponseSchema = z
     schemaVersion: z.literal(ANALYSIS_RESPONSE_SCHEMA_VERSION),
     facts: extractedFoodFactsSchema,
     evaluation: evaluationResultSchema,
-  })
-  .strict();
-
-export const storedProfileEnvelopeSchema = z
-  .object({
-    schemaVersion: z.literal(STORED_PROFILE_SCHEMA_VERSION),
-    profile: userProfileSchema,
   })
   .strict();
 
@@ -67,8 +58,5 @@ export type AnalysisImageMetadata = z.infer<
 >;
 export type AnalysisRequest = z.infer<typeof analysisRequestSchema>;
 export type AnalysisResponse = z.infer<typeof analysisResponseSchema>;
-export type StoredProfileEnvelope = z.infer<
-  typeof storedProfileEnvelopeSchema
->;
 export type AnalysisErrorCode = z.infer<typeof analysisErrorCodeSchema>;
 export type AnalysisError = z.infer<typeof analysisErrorSchema>;

@@ -5,7 +5,6 @@ import {
   analysisErrorSchema,
   analysisRequestSchema,
   analysisResponseSchema,
-  storedProfileEnvelopeSchema,
 } from "@/domain/analysis";
 import {
   clarificationQuestionSchema,
@@ -19,6 +18,7 @@ import {
 } from "@/domain/food";
 import {
   analysisProfileContextSchema,
+  storedProfileEnvelopeSchema,
   userProfileSchema,
 } from "@/domain/profile";
 
