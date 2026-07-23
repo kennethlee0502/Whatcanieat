@@ -193,7 +193,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Tasks 4–7.
 
-## ⬜ Task 9 — Implement image validation, preparation, and lifecycle
+## ✅ Task 9 — Implement image validation, preparation, and lifecycle
 
 **Goal:** Prepare mobile food images safely and keep them entirely in memory.
 
@@ -214,7 +214,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Task 5.
 
-## ⬜ Task 10 — Implement capture and preview
+## ✅ Task 10 — Implement capture and preview
 
 **Goal:** Let users take or select, prepare, review, replace, and confirm a food image.
 
@@ -234,7 +234,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Tasks 6, 8–9, plus explicit design approval.
 
-## ⬜ Task 11 — Establish rule provenance and normalization
+## ✅ Task 11 — Establish rule provenance and normalization
 
 **Goal:** Create the safety foundation every deterministic rule must use.
 
@@ -260,7 +260,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Task 3.
 
-## ⬜ Task 12 — Research and implement allergy rules
+## ✅ Task 12 — Research and implement allergy rules
 
 **Goal:** Deterministically evaluate allergy evidence using reviewed authoritative guidance.
 
@@ -280,7 +280,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Task 11.
 
-## ⬜ Task 13 — Research and implement pregnancy rules
+## ✅ Task 13 — Research and implement pregnancy rules
 
 **Goal:** Evaluate only reviewed, MVP-relevant pregnancy food guidance.
 
@@ -298,7 +298,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Task 11.
 
-## ⬜ Task 14 — Research and implement high-blood-pressure rules
+## ✅ Task 14 — Research and implement high-blood-pressure rules
 
 **Goal:** Produce narrow sodium-related caution using reviewed authoritative guidance.
 
@@ -317,7 +317,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Task 11.
 
-## ⬜ Task 15 — Specify and implement vegetarian and vegan rules
+## ✅ Task 15 — Specify and implement vegetarian and vegan rules
 
 **Goal:** Deterministically identify supported diet-preference conflicts.
 
@@ -336,7 +336,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Task 11.
 
-## ⬜ Task 16 — Implement aggregation, confidence, and the complete rule engine
+## ✅ Task 16 — Implement aggregation, confidence, and the complete rule engine
 
 **Goal:** Combine all supported rules into one deterministic evaluation entry point.
 
@@ -357,7 +357,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Tasks 12–15.
 
-## ⬜ Task 17 — Implement mock analysis and premium loading
+## ✅ Task 17 — Implement mock analysis and premium loading
 
 **Goal:** Exercise the complete client flow without provider integration.
 
@@ -377,7 +377,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Tasks 10 and 16, plus explicit design approval.
 
-## ⬜ Task 18 — Implement the result narrative and evidence presentation
+## ✅ Task 18 — Implement the result narrative and evidence presentation
 
 **Goal:** Present every verdict through the approved evidence-first editorial story.
 
@@ -401,7 +401,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Tasks 16–17, plus explicit design approval.
 
-## ⬜ Task 19 — Define the OpenAI extraction contract
+## ✅ Task 19 — Define the OpenAI extraction contract
 
 **Goal:** Establish a strict server-owned image-to-facts contract.
 
