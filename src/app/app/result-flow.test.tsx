@@ -50,6 +50,8 @@ const preparedImage: PreparedImage = {
 const renderResult = (
   response: AnalysisResponse,
   onNewScan = vi.fn(),
+  onClarificationRequested = vi.fn(),
+  presentation?: "clarificationRevision",
 ) => {
   const result = render(
     <ResultFlow
@@ -57,9 +59,11 @@ const renderResult = (
       facts={response.facts}
       evaluation={response.evaluation}
       onNewScan={onNewScan}
+      onClarificationRequested={onClarificationRequested}
+      presentation={presentation}
     />,
   );
-  return { ...result, onNewScan };
+  return { ...result, onNewScan, onClarificationRequested };
 };
 
 afterEach(() => {
@@ -220,6 +224,34 @@ describe("ResultFlow", () => {
         screen.queryByRole("button", { name: answer.label }),
       ).not.toBeInTheDocument();
     }
+  });
+
+  it("requests the exact engine-selected clarification question", async () => {
+    const user = userEvent.setup();
+    const response = syntheticAnalysisResponses.needMoreInformation;
+    const selected = response.evaluation.clarificationQuestions[0];
+    const { onClarificationRequested } = renderResult(response);
+
+    await user.click(
+      screen.getByRole("button", { name: "Answer one question" }),
+    );
+
+    expect(onClarificationRequested).toHaveBeenCalledOnce();
+    expect(onClarificationRequested).toHaveBeenCalledWith(selected.id);
+  });
+
+  it("announces a clarification revision and restores result focus", () => {
+    renderResult(
+      syntheticAnalysisResponses.avoid,
+      vi.fn(),
+      vi.fn(),
+      "clarificationRevision",
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Result updated. Avoid.",
+    );
+    expect(screen.getByRole("heading", { name: "What we saw" })).toHaveFocus();
   });
 
   it("shows the no-consequential-unknowns statement for a resolved result", () => {

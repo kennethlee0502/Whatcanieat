@@ -177,6 +177,18 @@
   background: var(--color-canvas-elevated);
 }
 
+.clarificationButton {
+  width: 100%;
+  min-height: 3rem;
+  margin-top: var(--space-5);
+  padding-inline: var(--space-4);
+  border: 1px solid var(--color-border-interactive);
+  border-radius: var(--radius-medium);
+  background: var(--color-action-secondary);
+  color: var(--color-action-secondary-text);
+  font-weight: 600;
+}
+
 .eyebrow {
   margin: 0 0 var(--space-3);
 }

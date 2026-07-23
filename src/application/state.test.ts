@@ -8,6 +8,7 @@ import {
 import type { EvaluationResult } from "@/domain/evaluation";
 import type { ExtractedFoodFacts } from "@/domain/food";
 import type { UserProfile } from "@/domain/profile";
+import { syntheticAnalysisResponses } from "@/lib/mock-analysis";
 
 const profile: UserProfile = {
   pregnancy: { status: "notPregnant" },
@@ -232,6 +233,79 @@ describe("applicationReducer", () => {
     expect(applicationReducer(errorState, { type: "errorDismissed" })).toEqual({
       kind: "capture",
       profile,
+    });
+  });
+
+  it("enters clarification only for the engine-selected question", () => {
+    const response = syntheticAnalysisResponses.needMoreInformation;
+    const result: ApplicationState = {
+      kind: "result",
+      profile,
+      image: { id: "image-1" },
+      facts: response.facts,
+      evaluation: response.evaluation,
+    };
+    const questionId =
+      response.evaluation.clarificationQuestions[0].id;
+
+    expect(
+      applicationReducer(result, {
+        type: "clarificationRequested",
+        questionId: "not-selected",
+      }),
+    ).toBe(result);
+    expect(
+      applicationReducer(result, {
+        type: "clarificationRequested",
+        questionId,
+      }),
+    ).toMatchObject({ kind: "clarification", questionId });
+  });
+
+  it("cancels clarification to the exact original result", () => {
+    const response = syntheticAnalysisResponses.needMoreInformation;
+    const clarification: ApplicationState = {
+      kind: "clarification",
+      profile,
+      image: { id: "image-1" },
+      facts: response.facts,
+      evaluation: response.evaluation,
+      questionId: response.evaluation.clarificationQuestions[0].id,
+    };
+
+    expect(
+      applicationReducer(clarification, { type: "clarificationCanceled" }),
+    ).toEqual({
+      kind: "result",
+      profile,
+      image: clarification.image,
+      facts: response.facts,
+      evaluation: response.evaluation,
+    });
+  });
+
+  it("marks only a clarification-completed result for presentation", () => {
+    const response = syntheticAnalysisResponses.needMoreInformation;
+    const clarification: ApplicationState = {
+      kind: "clarification",
+      profile,
+      image: { id: "image-1" },
+      facts: response.facts,
+      evaluation: response.evaluation,
+      questionId: response.evaluation.clarificationQuestions[0].id,
+    };
+
+    expect(
+      applicationReducer(clarification, {
+        type: "clarificationCompleted",
+        facts,
+        evaluation,
+      }),
+    ).toMatchObject({
+      kind: "result",
+      facts,
+      evaluation,
+      presentation: "clarificationRevision",
     });
   });
 

@@ -247,6 +247,106 @@ describe("ApplicationView", () => {
     expect(dispatch).toHaveBeenCalledWith({ type: "newScanRequested" });
   });
 
+  it("opens only the engine-selected clarification question", async () => {
+    const user = userEvent.setup();
+    const dispatch = vi.fn();
+    const response = syntheticAnalysisResponses.needMoreInformation;
+    const question = response.evaluation.clarificationQuestions[0];
+    render(
+      <ApplicationView
+        state={{
+          kind: "result",
+          profile: {
+            ...profile,
+            allergies: [{ allergenId: "peanut", label: "Peanut" }],
+          },
+          image: { id: "image-1" },
+          facts: response.facts,
+          evaluation: response.evaluation,
+        }}
+        dispatch={dispatch}
+        saveProfile={saveProfile}
+        imageFlow={{ lifecycle, preparedImage }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Answer one question" }),
+    );
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "clarificationRequested",
+      questionId: question.id,
+    });
+  });
+
+  it("completes clarification locally without making a request", async () => {
+    const user = userEvent.setup();
+    const dispatch = vi.fn();
+    const fetchRequest = vi.fn();
+    vi.stubGlobal("fetch", fetchRequest);
+    const response = syntheticAnalysisResponses.needMoreInformation;
+    const question = response.evaluation.clarificationQuestions[0];
+    const option = question.answerOptions.find(
+      ({ id }) => id === "confirmed-present",
+    )!;
+    render(
+      <ApplicationView
+        state={{
+          kind: "clarification",
+          profile: {
+            ...profile,
+            allergies: [{ allergenId: "peanut", label: "Peanut" }],
+          },
+          image: { id: "image-1" },
+          facts: response.facts,
+          evaluation: response.evaluation,
+          questionId: question.id,
+        }}
+        dispatch={dispatch}
+        saveProfile={saveProfile}
+        imageFlow={{ lifecycle, preparedImage }}
+      />,
+    );
+
+    await user.click(screen.getByRole("radio", { name: option.label }));
+    await user.click(
+      screen.getByRole("button", { name: "Update recommendation" }),
+    );
+
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "clarificationCompleted",
+        evaluation: expect.objectContaining({ verdict: "avoid" }),
+      }),
+    );
+    expect(fetchRequest).not.toHaveBeenCalled();
+  });
+
+  it("cancels clarification through the existing application flow", async () => {
+    const user = userEvent.setup();
+    const dispatch = vi.fn();
+    const response = syntheticAnalysisResponses.needMoreInformation;
+    const question = response.evaluation.clarificationQuestions[0];
+    render(
+      <ApplicationView
+        state={{
+          kind: "clarification",
+          profile,
+          image: { id: "image-1" },
+          facts: response.facts,
+          evaluation: response.evaluation,
+          questionId: question.id,
+        }}
+        dispatch={dispatch}
+        saveProfile={saveProfile}
+        imageFlow={{ lifecycle, preparedImage }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(dispatch).toHaveBeenCalledWith({ type: "clarificationCanceled" });
+  });
+
   it("owns one lifecycle across rerenders and ignores visibility changes", () => {
     application.state = { kind: "capture", profile };
     const createLifecycle = vi.fn().mockReturnValue(lifecycle);

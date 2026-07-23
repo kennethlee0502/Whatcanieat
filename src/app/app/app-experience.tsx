@@ -11,6 +11,7 @@ import {
 import styles from "@/app/app/app.module.css";
 import { AnalysisFlow } from "@/app/app/analysis-flow";
 import { CaptureFlow } from "@/app/app/capture-flow";
+import { ClarificationFlow } from "@/app/app/clarification-flow";
 import { ProfileSetup } from "@/app/app/profile-setup";
 import { ResultFlow } from "@/app/app/result-flow";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@/application/state";
 import { useApplicationState } from "@/application/use-application-state";
 import type { UserProfile } from "@/domain/profile";
+import { resolveClarification } from "@/domain/clarification";
 import {
   requestAnalysis,
   type ClientAnalysis,
@@ -222,10 +224,46 @@ export const ApplicationView = ({
           preparedImage={imageFlow.preparedImage}
           facts={state.facts}
           evaluation={state.evaluation}
+          presentation={state.presentation}
+          onClarificationRequested={(questionId) =>
+            dispatch({ type: "clarificationRequested", questionId })
+          }
           onNewScan={() => dispatch({ type: "newScanRequested" })}
         />
       </div>
     );
+  }
+
+  if (state.kind === "clarification") {
+    const question = state.evaluation.clarificationQuestions[0];
+    if (question?.id === state.questionId) {
+      return (
+        <div className={`app-canvas ${styles.canvas}`}>
+          <ClarificationFlow
+            question={question}
+            onSubmit={(answerOptionId) => {
+              const resolution = resolveClarification({
+                profile: state.profile,
+                facts: state.facts,
+                evaluation: state.evaluation,
+                questionId: state.questionId,
+                answerOptionId,
+              });
+              if (!resolution.success) {
+                return false;
+              }
+              dispatch({
+                type: "clarificationCompleted",
+                facts: resolution.facts,
+                evaluation: resolution.evaluation,
+              });
+              return true;
+            }}
+            onCancel={() => dispatch({ type: "clarificationCanceled" })}
+          />
+        </div>
+      );
+    }
   }
 
   return (

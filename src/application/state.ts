@@ -45,6 +45,7 @@ export type ApplicationState =
       image: ImageReference;
       facts: ExtractedFoodFacts;
       evaluation: EvaluationResult;
+      presentation?: "clarificationRevision";
     }>
   | Readonly<{
       kind: "clarification";
@@ -92,6 +93,7 @@ export type ApplicationEvent =
       facts: ExtractedFoodFacts;
       evaluation: EvaluationResult;
     }>
+  | Readonly<{ type: "clarificationCanceled" }>
   | Readonly<{ type: "newScanRequested" }>
   | Readonly<{ type: "retryRequested" }>
   | Readonly<{ type: "errorDismissed" }>
@@ -237,7 +239,14 @@ export const applicationReducer = (
 
     case "result":
       if (event.type === "clarificationRequested") {
-        return { ...state, kind: "clarification", questionId: event.questionId };
+        const selectedQuestion = state.evaluation.clarificationQuestions[0];
+        return selectedQuestion?.id === event.questionId
+          ? {
+              ...state,
+              kind: "clarification",
+              questionId: event.questionId,
+            }
+          : state;
       }
       if (event.type === "newScanRequested") {
         return { kind: "capture", profile: state.profile };
@@ -255,6 +264,16 @@ export const applicationReducer = (
           image: state.image,
           facts: event.facts,
           evaluation: event.evaluation,
+          presentation: "clarificationRevision",
+        };
+      }
+      if (event.type === "clarificationCanceled") {
+        return {
+          kind: "result",
+          profile: state.profile,
+          image: state.image,
+          facts: state.facts,
+          evaluation: state.evaluation,
         };
       }
       return state;

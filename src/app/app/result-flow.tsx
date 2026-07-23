@@ -212,6 +212,8 @@ type ResultFlowProps = Readonly<{
   facts: ExtractedFoodFacts;
   evaluation: EvaluationResult;
   onNewScan: () => void;
+  onClarificationRequested?: (questionId: string) => void;
+  presentation?: "clarificationRevision";
 }>;
 
 export const ResultFlow = ({
@@ -219,6 +221,8 @@ export const ResultFlow = ({
   facts,
   evaluation,
   onNewScan,
+  onClarificationRequested,
+  presentation,
 }: ResultFlowProps) => {
   const prefersReducedMotion = useReducedMotion();
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -253,7 +257,10 @@ export const ResultFlow = ({
     >
       <p className={styles.brand}>Can / I Eat This?</p>
       <p className={styles.resultAnnouncement} role="status" aria-live="polite">
-        Result ready. {verdict.label}.
+        {presentation === "clarificationRevision"
+          ? "Result updated."
+          : "Result ready."}{" "}
+        {verdict.label}.
       </p>
 
       <div className={styles.previewFrame}>
@@ -341,6 +348,15 @@ export const ResultFlow = ({
               {clarification.prompt}
             </p>
             <p className={styles.bodyText}>{clarification.whyItMatters}</p>
+            {onClarificationRequested ? (
+              <button
+                className={styles.clarificationButton}
+                type="button"
+                onClick={() => onClarificationRequested(clarification.id)}
+              >
+                Answer one question
+              </button>
+            ) : null}
           </div>
         ) : null}
       </section>
