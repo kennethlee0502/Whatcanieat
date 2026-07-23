@@ -65,7 +65,9 @@ export type ApplicationEvent =
   | Readonly<{ type: "profileRestorationFailed" }>
   | Readonly<{ type: "profileStarted" }>
   | Readonly<{ type: "profileSaved"; profile: UserProfile }>
+  | Readonly<{ type: "profileContinuedInMemory"; profile: UserProfile }>
   | Readonly<{ type: "profileEditRequested" }>
+  | Readonly<{ type: "profileEditCanceled" }>
   | Readonly<{ type: "imageSelected"; imageId: string }>
   | Readonly<{ type: "imagePrepared"; imageId: string }>
   | Readonly<{ type: "imagePreparationFailed"; imageId: string; error: AnalysisError }>
@@ -119,9 +121,16 @@ export const applicationReducer = (
       return event.type === "profileStarted" ? { kind: "profile" } : state;
 
     case "profile":
-      return event.type === "profileSaved"
-        ? { kind: "capture", profile: event.profile }
-        : state;
+      if (
+        event.type === "profileSaved" ||
+        event.type === "profileContinuedInMemory"
+      ) {
+        return { kind: "capture", profile: event.profile };
+      }
+      if (event.type === "profileEditCanceled" && state.profile) {
+        return { kind: "capture", profile: state.profile };
+      }
+      return state;
 
     case "capture":
       if (event.type === "profileEditRequested") {

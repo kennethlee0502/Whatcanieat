@@ -5,6 +5,7 @@ import {
   type FormEvent,
   type RefCallback,
   useCallback,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -41,22 +42,40 @@ type ProfileDraft = {
 };
 
 type ProfileSetupProps = Readonly<{
+  initialProfile?: UserProfile;
   onSave: (profile: UserProfile) => ProfileStorageOperationResult;
+  onContinueWithoutSaving?: (profile: UserProfile) => void;
+  onCancelEditing?: () => void;
 }>;
 
 const isValidOptionalMeasurement = (value: string) =>
   value === "" || (Number.isFinite(Number(value)) && Number(value) > 0);
 
-const createDraft = (): ProfileDraft => ({
-  pregnancyStatus: "",
-  pregnancyWeek: "",
-  allergies: [],
-  highBloodPressure: "",
-  diet: "",
-  height: "",
-  heightUnit: "centimeters",
-  weight: "",
-  weightUnit: "kilograms",
+const createDraft = (profile?: UserProfile): ProfileDraft => ({
+  pregnancyStatus: profile?.pregnancy.status ?? "",
+  pregnancyWeek:
+    profile?.pregnancy.status === "pregnant" &&
+    profile.pregnancy.week !== undefined
+      ? String(profile.pregnancy.week)
+      : "",
+  allergies: profile?.allergies.map((allergy) => ({ ...allergy })) ?? [],
+  highBloodPressure:
+    profile === undefined ? "" : profile.highBloodPressure ? "yes" : "no",
+  diet: profile?.diet ?? "",
+  height:
+    profile?.measurements?.height === undefined
+      ? ""
+      : String(profile.measurements.height.value),
+  heightUnit:
+    profile?.measurements?.height?.unit ??
+    "centimeters",
+  weight:
+    profile?.measurements?.weight === undefined
+      ? ""
+      : String(profile.measurements.weight.value),
+  weightUnit:
+    profile?.measurements?.weight?.unit ??
+    "kilograms",
 });
 
 const getStepError = (step: ProfileStep, draft: ProfileDraft) => {
@@ -179,12 +198,21 @@ const focusInvalidControl = (form: HTMLFormElement | null) => {
     ?.focus();
 };
 
-export const ProfileSetup = ({ onSave }: ProfileSetupProps) => {
+export const ProfileSetup = ({
+  initialProfile,
+  onSave,
+  onContinueWithoutSaving = () => undefined,
+  onCancelEditing,
+}: ProfileSetupProps) => {
   const prefersReducedMotion = useReducedMotion();
+  const initialProfileSignature = JSON.stringify(initialProfile ?? null);
+  const previousInitialProfileSignature = useRef(initialProfileSignature);
   const [step, setStep] = useState<ProfileStep>(0);
-  const [draft, setDraft] = useState(createDraft);
+  const [draft, setDraft] = useState(() => createDraft(initialProfile));
   const [stepError, setStepError] = useState<string | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [profilePendingStorage, setProfilePendingStorage] =
+    useState<UserProfile | null>(null);
   const [allergyLabel, setAllergyLabel] = useState("");
   const [allergyError, setAllergyError] = useState<string | null>(null);
   const headingRef = useCallback<RefCallback<HTMLHeadingElement>>((element) => {
@@ -192,10 +220,26 @@ export const ProfileSetup = ({ onSave }: ProfileSetupProps) => {
   }, []);
   const formRef = useRef<HTMLFormElement>(null);
 
+  useEffect(() => {
+    if (previousInitialProfileSignature.current === initialProfileSignature) {
+      return;
+    }
+
+    previousInitialProfileSignature.current = initialProfileSignature;
+    setStep(0);
+    setDraft(createDraft(initialProfile));
+    setStepError(null);
+    setStorageError(null);
+    setProfilePendingStorage(null);
+    setAllergyLabel("");
+    setAllergyError(null);
+  }, [initialProfile, initialProfileSignature]);
+
   const updateDraft = (change: Partial<ProfileDraft>) => {
     setDraft((current) => ({ ...current, ...change }));
     setStepError(null);
     setStorageError(null);
+    setProfilePendingStorage(null);
   };
 
   const addAllergy = () => {
@@ -282,6 +326,7 @@ export const ProfileSetup = ({ onSave }: ProfileSetupProps) => {
       setStorageError(
         "We couldn’t save your temporary profile in this browser. Your entries are still here. Try again.",
       );
+      setProfilePendingStorage(profile);
     }
   };
 
@@ -290,6 +335,7 @@ export const ProfileSetup = ({ onSave }: ProfileSetupProps) => {
       setStep((step - 1) as ProfileStep);
       setStepError(null);
       setStorageError(null);
+      setProfilePendingStorage(null);
     }
   };
 
@@ -371,15 +417,41 @@ export const ProfileSetup = ({ onSave }: ProfileSetupProps) => {
 
             <div className={styles.actions}>
               <button className={styles.primaryAction} type="submit">
-                {step === 4 ? "Save profile" : "Continue"}
+                {storageError
+                  ? "Retry saving"
+                  : step === 4
+                    ? initialProfile
+                      ? "Update profile"
+                      : "Save profile"
+                    : "Continue"}
               </button>
-              {step > 0 ? (
+              {storageError && profilePendingStorage ? (
+                <button
+                  className={styles.secondaryAction}
+                  type="button"
+                  onClick={() =>
+                    onContinueWithoutSaving(profilePendingStorage)
+                  }
+                >
+                  Continue without saving
+                </button>
+              ) : null}
+              {!storageError && step > 0 ? (
                 <button
                   className={styles.secondaryAction}
                   type="button"
                   onClick={goBack}
                 >
                   Back
+                </button>
+              ) : null}
+              {onCancelEditing ? (
+                <button
+                  className={styles.tertiaryAction}
+                  type="button"
+                  onClick={onCancelEditing}
+                >
+                  Cancel editing
                 </button>
               ) : null}
             </div>
@@ -615,43 +687,79 @@ const DietStep = ({ draft, updateDraft, headingRef, error }: StepProps) => (
   </>
 );
 
-const MeasurementsStep = ({ draft, updateDraft, headingRef, error }: StepProps) => (
-  <>
-    <StepHeading
-      headingRef={headingRef}
-      description="These fields are optional and saved for possible future profile features. They are not used in today’s food evaluation or sent for analysis."
-    >
-      Add measurements, if you want.
-    </StepHeading>
-    <div className={styles.measurements}>
-      <div className={styles.measurementRow}>
-        <label className={styles.inputField}>
-          <span>Height <span className={styles.optional}>(optional)</span></span>
-          <input type="number" inputMode="decimal" min="0" step="any" value={draft.height} aria-invalid={!isValidOptionalMeasurement(draft.height)} aria-describedby={!isValidOptionalMeasurement(draft.height) ? "measurements-error" : undefined} onChange={(event) => updateDraft({ height: event.target.value })} />
-        </label>
-        <label className={styles.unitField}>
-          <span>Unit</span>
-          <select value={draft.heightUnit} onChange={(event) => updateDraft({ heightUnit: event.target.value as ProfileDraft["heightUnit"] })}>
-            <option value="centimeters">cm</option>
-            <option value="inches">in</option>
-          </select>
-        </label>
+const MeasurementsStep = ({
+  draft,
+  updateDraft,
+  headingRef,
+  error,
+}: StepProps) => {
+  const heightIsValid = isValidOptionalMeasurement(draft.height);
+  const weightIsValid = isValidOptionalMeasurement(draft.weight);
+  const bmi =
+    draft.height !== "" &&
+    draft.weight !== "" &&
+    heightIsValid &&
+    weightIsValid
+      ? calculateBmi({
+          height: {
+            value: Number(draft.height),
+            unit: draft.heightUnit,
+          },
+          weight: {
+            value: Number(draft.weight),
+            unit: draft.weightUnit,
+          },
+        })
+      : null;
+
+  return (
+    <>
+      <StepHeading
+        headingRef={headingRef}
+        description="These fields are optional and saved for possible future profile features. They are not used in today’s food evaluation or sent for analysis."
+      >
+        Add measurements, if you want.
+      </StepHeading>
+      <div className={styles.measurements}>
+        <div className={styles.measurementRow}>
+          <label className={styles.inputField}>
+            <span>Height <span className={styles.optional}>(optional)</span></span>
+            <input type="number" inputMode="decimal" min="0" step="any" value={draft.height} aria-invalid={!heightIsValid} aria-describedby={!heightIsValid ? "measurements-error" : undefined} onChange={(event) => updateDraft({ height: event.target.value })} />
+          </label>
+          <label className={styles.unitField}>
+            <span>Unit</span>
+            <select value={draft.heightUnit} onChange={(event) => updateDraft({ heightUnit: event.target.value as ProfileDraft["heightUnit"] })}>
+              <option value="centimeters">cm</option>
+              <option value="inches">in</option>
+            </select>
+          </label>
+        </div>
+        <div className={styles.measurementRow}>
+          <label className={styles.inputField}>
+            <span>Weight <span className={styles.optional}>(optional)</span></span>
+            <input type="number" inputMode="decimal" min="0" step="any" value={draft.weight} aria-invalid={!weightIsValid} aria-describedby={!weightIsValid ? "measurements-error" : undefined} onChange={(event) => updateDraft({ weight: event.target.value })} />
+          </label>
+          <label className={styles.unitField}>
+            <span>Unit</span>
+            <select value={draft.weightUnit} onChange={(event) => updateDraft({ weightUnit: event.target.value as ProfileDraft["weightUnit"] })}>
+              <option value="kilograms">kg</option>
+              <option value="pounds">lb</option>
+            </select>
+          </label>
+        </div>
       </div>
-      <div className={styles.measurementRow}>
-        <label className={styles.inputField}>
-          <span>Weight <span className={styles.optional}>(optional)</span></span>
-          <input type="number" inputMode="decimal" min="0" step="any" value={draft.weight} aria-invalid={!isValidOptionalMeasurement(draft.weight)} aria-describedby={!isValidOptionalMeasurement(draft.weight) ? "measurements-error" : undefined} onChange={(event) => updateDraft({ weight: event.target.value })} />
-        </label>
-        <label className={styles.unitField}>
-          <span>Unit</span>
-          <select value={draft.weightUnit} onChange={(event) => updateDraft({ weightUnit: event.target.value as ProfileDraft["weightUnit"] })}>
-            <option value="kilograms">kg</option>
-            <option value="pounds">lb</option>
-          </select>
-        </label>
-      </div>
-    </div>
-    <FieldError id="measurements-error" error={error} />
-    <p className={styles.localNote}>Your complete profile stays in this browser session.</p>
-  </>
-);
+      <FieldError id="measurements-error" error={error} />
+      {bmi === null ? null : (
+        <output className={styles.bmiOutput}>
+          <span>Locally calculated BMI</span>
+          <strong>{bmi.toFixed(1)}</strong>
+        </output>
+      )}
+      <p className={styles.localNote}>
+        Your complete profile stays in this browser session. Measurements and
+        BMI are saved only for possible future profile features. They do not
+        affect current recommendations and are not sent for analysis.
+      </p>
+    </>
+  );
+};

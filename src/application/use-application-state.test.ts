@@ -83,4 +83,93 @@ describe("useApplicationState", () => {
 
     setItem.mockRestore();
   });
+
+  it("keeps the last stored profile while continuing with an update in memory", async () => {
+    window.sessionStorage.setItem(
+      SESSION_PROFILE_STORAGE_KEY,
+      JSON.stringify({ schemaVersion: 1, profile }),
+    );
+    const updatedProfile: UserProfile = {
+      ...profile,
+      highBloodPressure: true,
+    };
+    const { result, unmount } = renderHook(() => useApplicationState());
+    await waitFor(() =>
+      expect(result.current.state).toEqual({ kind: "capture", profile }),
+    );
+    act(() => {
+      result.current.dispatch({ type: "profileEditRequested" });
+    });
+
+    const setItem = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new DOMException("blocked");
+      });
+    let saveResult;
+    act(() => {
+      saveResult = result.current.saveProfile(updatedProfile);
+    });
+    expect(saveResult).toEqual({
+      status: "error",
+      reason: "writeFailed",
+    });
+    act(() => {
+      result.current.dispatch({
+        type: "profileContinuedInMemory",
+        profile: updatedProfile,
+      });
+    });
+    expect(result.current.state).toEqual({
+      kind: "capture",
+      profile: updatedProfile,
+    });
+
+    setItem.mockRestore();
+    expect(
+      JSON.parse(
+        window.sessionStorage.getItem(SESSION_PROFILE_STORAGE_KEY) ?? "null",
+      ),
+    ).toEqual({ schemaVersion: 1, profile });
+
+    unmount();
+    const restored = renderHook(() => useApplicationState());
+    await waitFor(() =>
+      expect(restored.result.current.state).toEqual({
+        kind: "capture",
+        profile,
+      }),
+    );
+  });
+
+  it("returns to welcome after refresh when a memory-only profile was never stored", async () => {
+    const memoryOnlyProfile: UserProfile = {
+      ...profile,
+      diet: "vegetarian",
+    };
+    const { result, unmount } = renderHook(() => useApplicationState());
+    await waitFor(() => expect(result.current.state.kind).toBe("welcome"));
+    act(() => {
+      result.current.dispatch({ type: "profileStarted" });
+      result.current.dispatch({
+        type: "profileContinuedInMemory",
+        profile: memoryOnlyProfile,
+      });
+    });
+    await waitFor(() =>
+      expect(result.current.state).toEqual({
+        kind: "capture",
+        profile: memoryOnlyProfile,
+      }),
+    );
+    expect(
+      window.sessionStorage.getItem(SESSION_PROFILE_STORAGE_KEY),
+    ).toBeNull();
+
+    unmount();
+    const restored = renderHook(() => useApplicationState());
+    await waitFor(() =>
+      expect(restored.result.current.state.kind).toBe("welcome"),
+    );
+  });
 });

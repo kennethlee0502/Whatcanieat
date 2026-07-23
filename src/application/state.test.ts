@@ -50,6 +50,36 @@ describe("applicationReducer", () => {
     expect(capture).toEqual({ kind: "capture", profile });
   });
 
+  it("preserves the last valid profile when editing is canceled", () => {
+    const editing: ApplicationState = { kind: "profile", profile };
+
+    expect(
+      applicationReducer(editing, { type: "profileEditCanceled" }),
+    ).toEqual({ kind: "capture", profile });
+  });
+
+  it("ignores edit cancellation when no valid profile exists", () => {
+    const creating: ApplicationState = { kind: "profile" };
+
+    expect(
+      applicationReducer(creating, { type: "profileEditCanceled" }),
+    ).toBe(creating);
+  });
+
+  it("continues to capture with a validated in-memory profile", () => {
+    const updatedProfile: UserProfile = {
+      ...profile,
+      highBloodPressure: true,
+    };
+
+    expect(
+      applicationReducer(
+        { kind: "profile", profile },
+        { type: "profileContinuedInMemory", profile: updatedProfile },
+      ),
+    ).toEqual({ kind: "capture", profile: updatedProfile });
+  });
+
   it("ignores stale image preparation results", () => {
     const state: ApplicationState = {
       kind: "preparingImage",

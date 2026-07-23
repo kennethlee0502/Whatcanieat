@@ -3,8 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationView } from "@/app/app/app-experience";
+import type { UserProfile } from "@/domain/profile";
 
 const saveProfile = vi.fn();
+const profile: UserProfile = {
+  pregnancy: { status: "notPregnant" },
+  allergies: [],
+  highBloodPressure: false,
+  diet: "none",
+};
 
 afterEach(cleanup);
 
@@ -65,5 +72,42 @@ describe("ApplicationView", () => {
 
     expect(dispatch).toHaveBeenCalledOnce();
     expect(dispatch).toHaveBeenCalledWith({ type: "profileStarted" });
+  });
+
+  it("exposes only the temporary profile-edit entry from capture", async () => {
+    const user = userEvent.setup();
+    const dispatch = vi.fn();
+    render(
+      <ApplicationView
+        state={{ kind: "capture", profile }}
+        dispatch={dispatch}
+        saveProfile={saveProfile}
+      />,
+    );
+
+    expect(
+      screen.getByText("Your temporary profile is ready."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Edit profile" }));
+
+    expect(dispatch).toHaveBeenCalledWith({ type: "profileEditRequested" });
+  });
+
+  it("wires edit cancellation back to the application reducer", async () => {
+    const user = userEvent.setup();
+    const dispatch = vi.fn();
+    render(
+      <ApplicationView
+        state={{ kind: "profile", profile }}
+        dispatch={dispatch}
+        saveProfile={saveProfile}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Cancel editing" }));
+
+    expect(dispatch).toHaveBeenCalledWith({ type: "profileEditCanceled" });
   });
 });

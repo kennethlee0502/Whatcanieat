@@ -97,7 +97,36 @@ export const ApplicationView = ({
   if (state.kind === "profile") {
     return (
       <div className={`app-canvas ${styles.canvas}`}>
-        <ProfileSetup onSave={saveProfile} />
+        <ProfileSetup
+          initialProfile={state.profile}
+          onSave={saveProfile}
+          onContinueWithoutSaving={(profile) =>
+            dispatch({ type: "profileContinuedInMemory", profile })
+          }
+          onCancelEditing={
+            state.profile
+              ? () => dispatch({ type: "profileEditCanceled" })
+              : undefined
+          }
+        />
+      </div>
+    );
+  }
+
+  if (state.kind === "capture") {
+    return (
+      <div className={`app-canvas ${styles.canvas}`}>
+        <main className={`content-shell ${styles.developmentBoundary}`}>
+          <p className={styles.brand}>Can / I Eat This?</p>
+          <p>Your temporary profile is ready.</p>
+          <button
+            className={styles.secondaryAction}
+            type="button"
+            onClick={() => dispatch({ type: "profileEditRequested" })}
+          >
+            Edit profile
+          </button>
+        </main>
       </div>
     );
   }
