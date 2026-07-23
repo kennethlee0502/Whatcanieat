@@ -1,0 +1,112 @@
+.flow {
+  display: flex;
+  min-height: calc(100vh - var(--space-12));
+  min-height: calc(100dvh - var(--space-12));
+  flex-direction: column;
+  overflow-x: clip;
+}
+
+.brand {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-instrument-serif), serif;
+  font-size: 1.375rem;
+  line-height: 1.1;
+}
+
+.analysis {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: clamp(var(--space-8), 8dvh, var(--space-12));
+}
+
+.previewFrame {
+  display: grid;
+  width: 100%;
+  min-height: 12rem;
+  max-height: min(42dvh, 24rem);
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-large);
+  background: var(--color-canvas-elevated);
+}
+
+.previewImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: min(42dvh, 24rem);
+  object-fit: contain;
+}
+
+.copy {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.title {
+  max-width: 12ch;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-instrument-serif), serif;
+  font-size: clamp(2.5rem, 12vw, 3.25rem);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.statusFrame {
+  min-height: 1.75rem;
+}
+
+.status,
+.supportingText {
+  max-width: 36ch;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.status {
+  color: var(--color-text-primary);
+}
+
+.supportingText {
+  color: var(--color-text-secondary);
+}
+
+.secondaryButton {
+  min-height: 3.5rem;
+  margin-top: auto;
+  padding-inline: var(--space-5);
+  border: 1px solid var(--color-border-interactive);
+  border-radius: var(--radius-medium);
+  background: var(--color-action-secondary);
+  color: var(--color-action-secondary-text);
+  font-weight: 600;
+  transition:
+    background-color var(--motion-small) var(--ease-standard),
+    transform var(--motion-press) var(--ease-standard);
+}
+
+.secondaryButton:hover {
+  background: var(--color-action-secondary-hover);
+}
+
+.secondaryButton:active {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .secondaryButton {
+    transition: none;
+  }
+
+  .secondaryButton:active {
+    transform: none;
+  }
+}

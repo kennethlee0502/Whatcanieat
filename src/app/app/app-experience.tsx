@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import styles from "@/app/app/app.module.css";
+import { AnalysisFlow } from "@/app/app/analysis-flow";
 import { CaptureFlow } from "@/app/app/capture-flow";
 import { ProfileSetup } from "@/app/app/profile-setup";
 import {
@@ -23,6 +24,10 @@ import {
   type PreparedImage,
 } from "@/lib/image-lifecycle";
 import type { ProfileStorageOperationResult } from "@/storage/profile-storage";
+import {
+  mockAnalysis,
+  type MockAnalysis,
+} from "@/lib/mock-analysis";
 
 type ImageFlowController = Readonly<{
   lifecycle: ImageLifecycle;
@@ -34,6 +39,8 @@ type ApplicationViewProps = Readonly<{
   dispatch: Dispatch<ApplicationEvent>;
   saveProfile: (profile: UserProfile) => ProfileStorageOperationResult;
   imageFlow?: ImageFlowController;
+  analyze?: MockAnalysis;
+  createRequestId?: () => string;
 }>;
 
 export const ApplicationView = ({
@@ -41,6 +48,8 @@ export const ApplicationView = ({
   dispatch,
   saveProfile,
   imageFlow,
+  analyze = mockAnalysis,
+  createRequestId = () => crypto.randomUUID(),
 }: ApplicationViewProps) => {
   const prefersReducedMotion = useReducedMotion();
 
@@ -138,6 +147,10 @@ export const ApplicationView = ({
       state.kind === "preview" ||
       state.kind === "error")
   ) {
+    const startAnalysis = () => {
+      dispatch({ type: "analysisStarted", requestId: createRequestId() });
+    };
+
     return (
       <div className={`app-canvas ${styles.canvas}`}>
         <CaptureFlow
@@ -149,6 +162,51 @@ export const ApplicationView = ({
             state.kind === "capture"
               ? () => dispatch({ type: "profileEditRequested" })
               : undefined
+          }
+          onConfirmPreparedImage={
+            state.kind === "preview" && imageFlow.preparedImage
+              ? startAnalysis
+              : undefined
+          }
+          onRetryAnalysis={
+            state.kind === "error" &&
+            state.recovery.kind === "preview" &&
+            state.error.retryable
+              ? () => {
+                  dispatch({ type: "errorDismissed" });
+                  startAnalysis();
+                }
+              : undefined
+          }
+        />
+      </div>
+    );
+  }
+
+  if (
+    imageFlow &&
+    state.kind === "analyzing" &&
+    imageFlow.preparedImage
+  ) {
+    return (
+      <div className={`app-canvas ${styles.canvas}`}>
+        <AnalysisFlow
+          requestId={state.requestId}
+          preparedImage={imageFlow.preparedImage}
+          analyze={analyze}
+          onSuccess={(requestId, response) =>
+            dispatch({
+              type: "analysisSucceeded",
+              requestId,
+              facts: response.facts,
+              evaluation: response.evaluation,
+            })
+          }
+          onFailure={(requestId, error) =>
+            dispatch({ type: "analysisFailed", requestId, error })
+          }
+          onCancel={(requestId) =>
+            dispatch({ type: "analysisCanceled", requestId })
           }
         />
       </div>
@@ -167,10 +225,14 @@ export const ApplicationView = ({
 
 type AppExperienceProps = Readonly<{
   createLifecycle?: typeof createImageLifecycle;
+  analyze?: MockAnalysis;
+  createRequestId?: () => string;
 }>;
 
 export const AppExperience = ({
   createLifecycle = createImageLifecycle,
+  analyze = mockAnalysis,
+  createRequestId,
 }: AppExperienceProps = {}) => {
   const { state, dispatch, saveProfile } = useApplicationState();
   const lifecycleRef = useRef<ImageLifecycle | null>(null);
@@ -236,6 +298,8 @@ export const AppExperience = ({
       dispatch={dispatch}
       saveProfile={saveProfile}
       imageFlow={imageFlow}
+      analyze={analyze}
+      createRequestId={createRequestId}
     />
   ) : null;
 };

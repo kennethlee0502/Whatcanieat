@@ -24,6 +24,7 @@ type CaptureFlowProps = Readonly<{
   dispatch: React.Dispatch<ApplicationEvent>;
   onEditProfile?: () => void;
   onConfirmPreparedImage?: (image: PreparedImage) => void;
+  onRetryAnalysis?: () => void;
 }>;
 
 const imageErrorContent = {
@@ -89,6 +90,7 @@ export const CaptureFlow = ({
   dispatch,
   onEditProfile,
   onConfirmPreparedImage,
+  onRetryAnalysis,
 }: CaptureFlowProps) => {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const focusedImageId =
@@ -106,6 +108,51 @@ export const CaptureFlow = ({
   };
 
   if (state.kind === "error") {
+    const isAnalysisFailure = state.recovery.kind === "preview";
+
+    if (isAnalysisFailure) {
+      return (
+        <main className={`content-shell ${styles.flow}`}>
+          <p className={styles.brand}>Can / I Eat This?</p>
+          <section
+            className={styles.error}
+            role="alert"
+            aria-labelledby="analysis-error-title"
+          >
+            <h1
+              ref={headingRef}
+              id="analysis-error-title"
+              className={styles.title}
+              tabIndex={-1}
+            >
+              We couldn’t finish the analysis
+            </h1>
+            <p className={styles.supportingText}>
+              Your photo is still here. Try again, or return to review it.
+            </p>
+            <div className={styles.actions}>
+              {state.error.retryable && onRetryAnalysis ? (
+                <button
+                  className={styles.primaryButton}
+                  type="button"
+                  onClick={onRetryAnalysis}
+                >
+                  Try again
+                </button>
+              ) : null}
+              <button
+                className={styles.textButton}
+                type="button"
+                onClick={() => dispatch({ type: "errorDismissed" })}
+              >
+                Back to photo
+              </button>
+            </div>
+          </section>
+        </main>
+      );
+    }
+
     const content =
       state.error.code in imageErrorContent
         ? imageErrorContent[

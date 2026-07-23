@@ -12,6 +12,7 @@ import type {
   ImageLifecycle,
   PreparedImage,
 } from "@/lib/image-lifecycle";
+import { syntheticAnalysisResponses } from "@/lib/mock-analysis";
 
 const application = vi.hoisted(() => ({
   state: { kind: "capture" } as ApplicationState,
@@ -139,6 +140,85 @@ describe("ApplicationView", () => {
     expect(dispatch).toHaveBeenCalledWith({ type: "profileEditRequested" });
   });
 
+  it("starts analysis from preview with a fresh request identity", async () => {
+    const user = userEvent.setup();
+    const dispatch = vi.fn();
+    render(
+      <ApplicationView
+        state={{ kind: "preview", profile, image: { id: "image-1" } }}
+        dispatch={dispatch}
+        saveProfile={saveProfile}
+        imageFlow={{ lifecycle, preparedImage }}
+        createRequestId={() => "request-new"}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Use this photo" }));
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "analysisStarted",
+      requestId: "request-new",
+    });
+  });
+
+  it("queues existing recovery before retrying with a fresh request identity", async () => {
+    const user = userEvent.setup();
+    const dispatch = vi.fn();
+    render(
+      <ApplicationView
+        state={{
+          kind: "error",
+          error: { code: "providerUnavailable", retryable: true },
+          recovery: {
+            kind: "preview",
+            profile,
+            image: { id: "image-1" },
+          },
+        }}
+        dispatch={dispatch}
+        saveProfile={saveProfile}
+        imageFlow={{ lifecycle, preparedImage }}
+        createRequestId={() => "request-retry"}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(dispatch).toHaveBeenNthCalledWith(1, { type: "errorDismissed" });
+    expect(dispatch).toHaveBeenNthCalledWith(2, {
+      type: "analysisStarted",
+      requestId: "request-retry",
+    });
+  });
+
+  it("connects analyzing success directly to the existing result transition", async () => {
+    const dispatch = vi.fn();
+    const analyze = vi.fn().mockResolvedValue(syntheticAnalysisResponses.safe);
+    render(
+      <ApplicationView
+        state={{
+          kind: "analyzing",
+          profile,
+          image: { id: "image-1" },
+          requestId: "request-1",
+        }}
+        dispatch={dispatch}
+        saveProfile={saveProfile}
+        imageFlow={{ lifecycle, preparedImage }}
+        analyze={analyze}
+      />,
+    );
+
+    await vi.waitFor(() =>
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "analysisSucceeded",
+        requestId: "request-1",
+        facts: syntheticAnalysisResponses.safe.facts,
+        evaluation: syntheticAnalysisResponses.safe.evaluation,
+      }),
+    );
+  });
+
   it("owns one lifecycle across rerenders and ignores visibility changes", () => {
     application.state = { kind: "capture", profile };
     const createLifecycle = vi.fn().mockReturnValue(lifecycle);
@@ -223,9 +303,7 @@ describe("ApplicationView", () => {
       ),
     ).toBe(false);
     expect(window.sessionStorage.length).toBe(0);
-    expect(
-      screen.queryByRole("button", { name: "Use this photo" }),
-    ).not.toBeInTheDocument();
+    expect(application.dispatch.mock.calls.flat()).not.toContain(preparedImage);
   });
 
   it("does not recreate or revoke object URLs in the UI", () => {

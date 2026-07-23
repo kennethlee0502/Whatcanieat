@@ -47,6 +47,7 @@ const renderFlow = ({
   image = null,
   dispatch = vi.fn(),
   onConfirmPreparedImage,
+  onRetryAnalysis,
 }: {
   state?: Extract<
     ApplicationState,
@@ -56,6 +57,7 @@ const renderFlow = ({
   image?: PreparedImage | null;
   dispatch?: React.Dispatch<ApplicationEvent>;
   onConfirmPreparedImage?: (prepared: PreparedImage) => void;
+  onRetryAnalysis?: () => void;
 } = {}) => {
   const result = render(
     <CaptureFlow
@@ -64,6 +66,7 @@ const renderFlow = ({
       preparedImage={image}
       dispatch={dispatch}
       onConfirmPreparedImage={onConfirmPreparedImage}
+      onRetryAnalysis={onRetryAnalysis}
     />,
   );
 
@@ -212,9 +215,8 @@ describe("CaptureFlow", () => {
           kind: "error",
           error: { code, retryable: false },
           recovery: {
-            kind: "preview",
+            kind: "capture",
             profile,
-            image: { id: "image-1" },
           },
         },
         dispatch,
@@ -243,6 +245,37 @@ describe("CaptureFlow", () => {
       "We couldn’t prepare this image",
     );
     expect(screen.getByRole("alert")).not.toHaveTextContent("evaluationFailed");
+  });
+
+  it("offers retry and preview recovery for a retryable analysis failure", async () => {
+    const user = userEvent.setup();
+    const dispatch = vi.fn();
+    const onRetryAnalysis = vi.fn();
+    renderFlow({
+      state: {
+        kind: "error",
+        error: { code: "providerUnavailable", retryable: true },
+        recovery: {
+          kind: "preview",
+          profile,
+          image: { id: "image-1" },
+        },
+      },
+      dispatch,
+      onRetryAnalysis,
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "We couldn’t finish the analysis",
+    );
+    expect(screen.getByRole("alert")).not.toHaveTextContent(
+      "providerUnavailable",
+    );
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetryAnalysis).toHaveBeenCalledOnce();
+
+    await user.click(screen.getByRole("button", { name: "Back to photo" }));
+    expect(dispatch).toHaveBeenCalledWith({ type: "errorDismissed" });
   });
 
   it("moves focus to each state heading", () => {
