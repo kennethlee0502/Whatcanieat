@@ -9,6 +9,12 @@ import {
 
 export const FOOD_FACTS_SCHEMA_VERSION = 1 as const;
 
+export const imageSuitabilitySchema = z.enum([
+  "foodDetected",
+  "noFoodDetected",
+  "insufficientImage",
+]);
+
 export const evidenceSourceSchema = z.enum([
   "visibleInImage",
   "readableOnLabel",
@@ -190,11 +196,7 @@ export const factContradictionSchema = z
 export const extractedFoodFactsSchema = z
   .object({
     schemaVersion: z.literal(FOOD_FACTS_SCHEMA_VERSION),
-    imageSuitability: z.enum([
-      "foodDetected",
-      "noFoodDetected",
-      "insufficientImage",
-    ]),
+    imageSuitability: imageSuitabilitySchema,
     foodCandidates: z.array(foodIdentitySchema).max(10),
     primaryFoodId: domainIdentifierSchema.nullable(),
     ingredients: z.array(ingredientEvidenceSchema).max(100),
