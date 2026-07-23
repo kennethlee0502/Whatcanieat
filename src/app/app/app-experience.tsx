@@ -4,18 +4,26 @@ import { motion, useReducedMotion } from "motion/react";
 import type { Dispatch } from "react";
 
 import styles from "@/app/app/app.module.css";
+import { ProfileSetup } from "@/app/app/profile-setup";
 import {
   type ApplicationEvent,
   type ApplicationState,
 } from "@/application/state";
 import { useApplicationState } from "@/application/use-application-state";
+import type { UserProfile } from "@/domain/profile";
+import type { ProfileStorageOperationResult } from "@/storage/profile-storage";
 
 type ApplicationViewProps = Readonly<{
   state: ApplicationState;
   dispatch: Dispatch<ApplicationEvent>;
+  saveProfile: (profile: UserProfile) => ProfileStorageOperationResult;
 }>;
 
-export const ApplicationView = ({ state, dispatch }: ApplicationViewProps) => {
+export const ApplicationView = ({
+  state,
+  dispatch,
+  saveProfile,
+}: ApplicationViewProps) => {
   const prefersReducedMotion = useReducedMotion();
 
   if (state.kind === "restoring") {
@@ -86,6 +94,14 @@ export const ApplicationView = ({ state, dispatch }: ApplicationViewProps) => {
     );
   }
 
+  if (state.kind === "profile") {
+    return (
+      <div className={`app-canvas ${styles.canvas}`}>
+        <ProfileSetup onSave={saveProfile} />
+      </div>
+    );
+  }
+
   return (
     <div className={`app-canvas ${styles.canvas}`}>
       <main className={`content-shell ${styles.developmentBoundary}`}>
@@ -97,7 +113,13 @@ export const ApplicationView = ({ state, dispatch }: ApplicationViewProps) => {
 };
 
 export const AppExperience = () => {
-  const { state, dispatch } = useApplicationState();
+  const { state, dispatch, saveProfile } = useApplicationState();
 
-  return <ApplicationView state={state} dispatch={dispatch} />;
+  return (
+    <ApplicationView
+      state={state}
+      dispatch={dispatch}
+      saveProfile={saveProfile}
+    />
+  );
 };

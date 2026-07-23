@@ -4,12 +4,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationView } from "@/app/app/app-experience";
 
+const saveProfile = vi.fn();
+
 afterEach(cleanup);
 
 describe("ApplicationView", () => {
   it("announces profile restoration without a spinner", () => {
     const { container } = render(
-      <ApplicationView state={{ kind: "restoring" }} dispatch={vi.fn()} />,
+      <ApplicationView
+        state={{ kind: "restoring" }}
+        dispatch={vi.fn()}
+        saveProfile={saveProfile}
+      />,
     );
 
     expect(screen.getByRole("status")).toHaveTextContent(
@@ -19,7 +25,13 @@ describe("ApplicationView", () => {
   });
 
   it("presents the factual welcome narrative and minimization disclosure", () => {
-    render(<ApplicationView state={{ kind: "welcome" }} dispatch={vi.fn()} />);
+    render(
+      <ApplicationView
+        state={{ kind: "welcome" }}
+        dispatch={vi.fn()}
+        saveProfile={saveProfile}
+      />,
+    );
 
     expect(
       screen.getByRole("heading", {
@@ -37,7 +49,13 @@ describe("ApplicationView", () => {
   it("dispatches profileStarted from the keyboard-accessible primary action", async () => {
     const user = userEvent.setup();
     const dispatch = vi.fn();
-    render(<ApplicationView state={{ kind: "welcome" }} dispatch={dispatch} />);
+    render(
+      <ApplicationView
+        state={{ kind: "welcome" }}
+        dispatch={dispatch}
+        saveProfile={saveProfile}
+      />,
+    );
 
     await user.tab();
     expect(
