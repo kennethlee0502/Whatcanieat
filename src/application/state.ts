@@ -71,6 +71,8 @@ export type ApplicationEvent =
   | Readonly<{ type: "imageSelected"; imageId: string }>
   | Readonly<{ type: "imagePrepared"; imageId: string }>
   | Readonly<{ type: "imagePreparationFailed"; imageId: string; error: AnalysisError }>
+  | Readonly<{ type: "imagePreparationCanceled"; imageId: string }>
+  | Readonly<{ type: "imageRemoved"; imageId: string }>
   | Readonly<{ type: "analysisStarted"; requestId: string }>
   | Readonly<{
       type: "analysisSucceeded";
@@ -146,6 +148,13 @@ export const applicationReducer = (
       return state;
 
     case "preparingImage":
+      if (event.type === "imageSelected") {
+        return {
+          kind: "preparingImage",
+          profile: state.profile,
+          image: { id: event.imageId },
+        };
+      }
       if (event.type === "imagePrepared" && event.imageId === state.image.id) {
         return { kind: "preview", profile: state.profile, image: state.image };
       }
@@ -158,6 +167,13 @@ export const applicationReducer = (
           error: event.error,
           recovery: { kind: "capture", profile: state.profile },
         };
+      }
+      if (
+        (event.type === "imagePreparationCanceled" ||
+          event.type === "imageRemoved") &&
+        event.imageId === state.image.id
+      ) {
+        return { kind: "capture", profile: state.profile };
       }
       return state;
 
@@ -174,6 +190,12 @@ export const applicationReducer = (
       }
       if (event.type === "profileEditRequested") {
         return { kind: "profile", profile: state.profile };
+      }
+      if (
+        event.type === "imageRemoved" &&
+        event.imageId === state.image.id
+      ) {
+        return { kind: "capture", profile: state.profile };
       }
       return state;
 

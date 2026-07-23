@@ -95,6 +95,85 @@ describe("applicationReducer", () => {
     ).toBe(state);
   });
 
+  it("replaces active preparation and ignores stale completion and failure", () => {
+    const preparing: ApplicationState = {
+      kind: "preparingImage",
+      profile,
+      image: { id: "image-1" },
+    };
+    const replacement = applicationReducer(preparing, {
+      type: "imageSelected",
+      imageId: "image-2",
+    });
+
+    expect(replacement).toEqual({
+      kind: "preparingImage",
+      profile,
+      image: { id: "image-2" },
+    });
+    expect(
+      applicationReducer(replacement, {
+        type: "imagePrepared",
+        imageId: "image-1",
+      }),
+    ).toBe(replacement);
+    expect(
+      applicationReducer(replacement, {
+        type: "imagePreparationFailed",
+        imageId: "image-1",
+        error: { code: "invalidImage", retryable: false },
+      }),
+    ).toBe(replacement);
+  });
+
+  it("cancels or removes only the current preparation", () => {
+    const preparing: ApplicationState = {
+      kind: "preparingImage",
+      profile,
+      image: { id: "image-1" },
+    };
+
+    expect(
+      applicationReducer(preparing, {
+        type: "imagePreparationCanceled",
+        imageId: "stale-image",
+      }),
+    ).toBe(preparing);
+    expect(
+      applicationReducer(preparing, {
+        type: "imagePreparationCanceled",
+        imageId: "image-1",
+      }),
+    ).toEqual({ kind: "capture", profile });
+    expect(
+      applicationReducer(preparing, {
+        type: "imageRemoved",
+        imageId: "image-1",
+      }),
+    ).toEqual({ kind: "capture", profile });
+  });
+
+  it("removes only the current preview image", () => {
+    const preview: ApplicationState = {
+      kind: "preview",
+      profile,
+      image: { id: "image-1" },
+    };
+
+    expect(
+      applicationReducer(preview, {
+        type: "imageRemoved",
+        imageId: "stale-image",
+      }),
+    ).toBe(preview);
+    expect(
+      applicationReducer(preview, {
+        type: "imageRemoved",
+        imageId: "image-1",
+      }),
+    ).toEqual({ kind: "capture", profile });
+  });
+
   it("ignores stale analysis responses", () => {
     expect(
       applicationReducer(analyzingState, {
