@@ -20,7 +20,13 @@ type ErrorRecovery = CaptureRecovery | PreviewRecovery;
 
 export type ApplicationState =
   | Readonly<{ kind: "restoring" }>
-  | Readonly<{ kind: "welcome" }>
+  | Readonly<{
+      kind: "welcome";
+      clearPresentation?:
+        | "clearingStoredProfile"
+        | "cleared"
+        | "storedProfileClearFailed";
+    }>
   | Readonly<{ kind: "profile"; profile?: UserProfile }>
   | Readonly<{ kind: "capture"; profile: UserProfile }>
   | Readonly<{
@@ -97,7 +103,11 @@ export type ApplicationEvent =
   | Readonly<{ type: "newScanRequested" }>
   | Readonly<{ type: "retryRequested" }>
   | Readonly<{ type: "errorDismissed" }>
-  | Readonly<{ type: "clearAll" }>;
+  | Readonly<{ type: "clearAll" }>
+  | Readonly<{
+      type: "profileStorageClearCompleted";
+      status: "success" | "failure";
+    }>;
 
 export const initialApplicationState: ApplicationState = { kind: "restoring" };
 
@@ -106,7 +116,7 @@ export const applicationReducer = (
   event: ApplicationEvent,
 ): ApplicationState => {
   if (event.type === "clearAll") {
-    return { kind: "welcome" };
+    return { kind: "welcome", clearPresentation: "clearingStoredProfile" };
   }
 
   switch (state.kind) {
@@ -122,6 +132,15 @@ export const applicationReducer = (
       return state;
 
     case "welcome":
+      if (event.type === "profileStorageClearCompleted") {
+        return {
+          kind: "welcome",
+          clearPresentation:
+            event.status === "success"
+              ? "cleared"
+              : "storedProfileClearFailed",
+        };
+      }
       return event.type === "profileStarted" ? { kind: "profile" } : state;
 
     case "profile":

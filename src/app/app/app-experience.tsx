@@ -11,6 +11,7 @@ import {
 import styles from "@/app/app/app.module.css";
 import { AnalysisFlow } from "@/app/app/analysis-flow";
 import { CaptureFlow } from "@/app/app/capture-flow";
+import { ClearAllControl } from "@/app/app/clear-all-control";
 import { ClarificationFlow } from "@/app/app/clarification-flow";
 import { ProfileSetup } from "@/app/app/profile-setup";
 import { ResultFlow } from "@/app/app/result-flow";
@@ -44,6 +45,7 @@ type ApplicationViewProps = Readonly<{
   imageFlow?: ImageFlowController;
   analyze?: ClientAnalysis;
   createRequestId?: () => string;
+  onClearAll?: () => void;
 }>;
 
 export const ApplicationView = ({
@@ -53,25 +55,41 @@ export const ApplicationView = ({
   imageFlow,
   analyze = requestAnalysis,
   createRequestId = () => crypto.randomUUID(),
+  onClearAll,
 }: ApplicationViewProps) => {
   const prefersReducedMotion = useReducedMotion();
+  const welcomeHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (state.kind === "welcome" && state.clearPresentation) {
+      welcomeHeadingRef.current?.focus();
+    }
+  }, [state]);
+
+  const renderCanvas = (content: React.ReactNode) => (
+    <div className={`app-canvas ${styles.canvas}`}>
+      {(state.kind !== "welcome" ||
+        state.clearPresentation === "storedProfileClearFailed") &&
+      onClearAll ? (
+        <ClearAllControl onConfirm={onClearAll} />
+      ) : null}
+      {content}
+    </div>
+  );
 
   if (state.kind === "restoring") {
-    return (
-      <div className={`app-canvas ${styles.canvas}`}>
+    return renderCanvas(
         <div className={`content-shell ${styles.restoring}`}>
           <p className={styles.brand}>Can / I Eat This?</p>
           <p className={styles.restoringStatus} role="status" aria-live="polite">
             Restoring your temporary profile.
           </p>
         </div>
-      </div>
     );
   }
 
   if (state.kind === "welcome") {
-    return (
-      <div className={`app-canvas ${styles.canvas}`}>
+    return renderCanvas(
         <motion.main
           className={`content-shell ${styles.welcome}`}
           initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
@@ -84,7 +102,12 @@ export const ApplicationView = ({
           <p className={styles.brand}>Can / I Eat This?</p>
 
           <section className={styles.introduction} aria-labelledby="welcome-title">
-            <h1 id="welcome-title" className={styles.title}>
+            <h1
+              ref={welcomeHeadingRef}
+              id="welcome-title"
+              className={styles.title}
+              tabIndex={state.clearPresentation ? -1 : undefined}
+            >
               See what we can confirm—and what still needs checking.
             </h1>
             <p className={styles.summary}>
@@ -119,14 +142,25 @@ export const ApplicationView = ({
               advice or a guarantee that a food is safe.
             </p>
           </footer>
+          {state.clearPresentation ? (
+            <p
+              className={styles.clearAnnouncement}
+              role="status"
+              aria-live="polite"
+            >
+              {state.clearPresentation === "storedProfileClearFailed"
+                ? "Temporary app data was cleared, but the saved profile could not be removed. Try Clear All again."
+                : state.clearPresentation === "cleared"
+                  ? "Temporary data cleared."
+                  : "Temporary app data cleared. Removing the saved profile."}
+            </p>
+          ) : null}
         </motion.main>
-      </div>
     );
   }
 
   if (state.kind === "profile") {
-    return (
-      <div className={`app-canvas ${styles.canvas}`}>
+    return renderCanvas(
         <ProfileSetup
           initialProfile={state.profile}
           onSave={saveProfile}
@@ -139,7 +173,6 @@ export const ApplicationView = ({
               : undefined
           }
         />
-      </div>
     );
   }
 
@@ -154,8 +187,7 @@ export const ApplicationView = ({
       dispatch({ type: "analysisStarted", requestId: createRequestId() });
     };
 
-    return (
-      <div className={`app-canvas ${styles.canvas}`}>
+    return renderCanvas(
         <CaptureFlow
           state={state}
           dispatch={dispatch}
@@ -182,7 +214,6 @@ export const ApplicationView = ({
               : undefined
           }
         />
-      </div>
     );
   }
 
@@ -191,8 +222,7 @@ export const ApplicationView = ({
     state.kind === "analyzing" &&
     imageFlow.preparedImage
   ) {
-    return (
-      <div className={`app-canvas ${styles.canvas}`}>
+    return renderCanvas(
         <AnalysisFlow
           requestId={state.requestId}
           preparedImage={imageFlow.preparedImage}
@@ -213,13 +243,11 @@ export const ApplicationView = ({
             dispatch({ type: "analysisCanceled", requestId })
           }
         />
-      </div>
     );
   }
 
   if (imageFlow && state.kind === "result" && imageFlow.preparedImage) {
-    return (
-      <div className={`app-canvas ${styles.canvas}`}>
+    return renderCanvas(
         <ResultFlow
           preparedImage={imageFlow.preparedImage}
           facts={state.facts}
@@ -230,15 +258,13 @@ export const ApplicationView = ({
           }
           onNewScan={() => dispatch({ type: "newScanRequested" })}
         />
-      </div>
     );
   }
 
   if (state.kind === "clarification") {
     const question = state.evaluation.clarificationQuestions[0];
     if (question?.id === state.questionId) {
-      return (
-        <div className={`app-canvas ${styles.canvas}`}>
+      return renderCanvas(
           <ClarificationFlow
             question={question}
             onSubmit={(answerOptionId) => {
@@ -261,18 +287,15 @@ export const ApplicationView = ({
             }}
             onCancel={() => dispatch({ type: "clarificationCanceled" })}
           />
-        </div>
       );
     }
   }
 
-  return (
-    <div className={`app-canvas ${styles.canvas}`}>
+  return renderCanvas(
       <main className={`content-shell ${styles.developmentBoundary}`}>
         <p className={styles.brand}>Can / I Eat This?</p>
         <p>This step will be added in its approved implementation task.</p>
       </main>
-    </div>
   );
 };
 
@@ -287,7 +310,8 @@ export const AppExperience = ({
   analyze = requestAnalysis,
   createRequestId,
 }: AppExperienceProps = {}) => {
-  const { state, dispatch, saveProfile } = useApplicationState();
+  const { state, dispatch, saveProfile, clearStoredProfile } =
+    useApplicationState();
   const lifecycleRef = useRef<ImageLifecycle | null>(null);
   const [imageFlow, setImageFlow] = useState<ImageFlowController | null>(null);
 
@@ -345,6 +369,31 @@ export const AppExperience = ({
     };
   }, [createLifecycle, dispatch]);
 
+  const clearAll = () => {
+    try {
+      lifecycleRef.current?.clear();
+    } finally {
+      setImageFlow((current) =>
+        current
+          ? { lifecycle: current.lifecycle, preparedImage: null }
+          : current,
+      );
+      dispatch({ type: "clearAll" });
+      queueMicrotask(() => {
+        let status: "success" | "failure" = "failure";
+        try {
+          status =
+            clearStoredProfile().status === "success"
+              ? "success"
+              : "failure";
+        } catch {
+          status = "failure";
+        }
+        dispatch({ type: "profileStorageClearCompleted", status });
+      });
+    }
+  };
+
   return imageFlow ? (
     <ApplicationView
       state={state}
@@ -353,6 +402,7 @@ export const AppExperience = ({
       imageFlow={imageFlow}
       analyze={analyze}
       createRequestId={createRequestId}
+      onClearAll={clearAll}
     />
   ) : null;
 };

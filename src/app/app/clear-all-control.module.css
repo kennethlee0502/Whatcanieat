@@ -1,0 +1,97 @@
+.trigger {
+  position: absolute;
+  z-index: 2;
+  top: max(var(--space-4), env(safe-area-inset-top));
+  right: max(var(--space-5), env(safe-area-inset-right));
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding-inline: var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.backdrop {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  align-items: end;
+  padding: var(--space-5);
+  padding-bottom: max(var(--space-5), env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--color-canvas) 78%, transparent);
+}
+
+.dialog {
+  width: min(100%, 27rem);
+  margin-inline: auto;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-large);
+  background: var(--color-canvas-elevated);
+}
+
+.eyebrow {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-instrument-serif), serif;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.description {
+  margin: var(--space-5) 0 0;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.actions {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.cancelButton,
+.clearButton {
+  width: 100%;
+  min-height: 3.25rem;
+  padding-inline: var(--space-4);
+  border-radius: var(--radius-medium);
+  font-weight: 600;
+}
+
+.cancelButton {
+  border: 1px solid var(--color-border-interactive);
+  background: var(--color-action-secondary);
+  color: var(--color-action-secondary-text);
+}
+
+.clearButton {
+  border: 1px solid var(--color-avoid);
+  background: transparent;
+  color: var(--color-avoid);
+}
+
+@media (min-width: 36rem) {
+  .backdrop {
+    align-items: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trigger,
+  .cancelButton,
+  .clearButton {
+    transition: none;
+  }
+}

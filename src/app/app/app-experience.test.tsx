@@ -1,4 +1,10 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -18,6 +24,7 @@ const application = vi.hoisted(() => ({
   state: { kind: "capture" } as ApplicationState,
   dispatch: vi.fn<(event: ApplicationEvent) => void>(),
   saveProfile: vi.fn(),
+  clearStoredProfile: vi.fn().mockReturnValue({ status: "success" }),
 }));
 
 vi.mock("@/application/use-application-state", () => ({
@@ -56,6 +63,10 @@ const lifecycle: ImageLifecycle = {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  application.dispatch.mockReset();
+  application.clearStoredProfile
+    .mockReset()
+    .mockReturnValue({ status: "success" });
   vi.unstubAllGlobals();
 });
 
@@ -345,6 +356,289 @@ describe("ApplicationView", () => {
 
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(dispatch).toHaveBeenCalledWith({ type: "clarificationCanceled" });
+  });
+
+  it("offers confirmed Clear All from every non-empty reachable state", async () => {
+    const user = userEvent.setup();
+    const response = syntheticAnalysisResponses.needMoreInformation;
+    const questionId = response.evaluation.clarificationQuestions[0].id;
+    const states: ApplicationState[] = [
+      { kind: "restoring" },
+      { kind: "profile", profile },
+      { kind: "capture", profile },
+      {
+        kind: "preparingImage",
+        profile,
+        image: { id: "image-1" },
+      },
+      { kind: "preview", profile, image: { id: "image-1" } },
+      {
+        kind: "analyzing",
+        profile,
+        image: { id: "image-1" },
+        requestId: "request-clear",
+      },
+      {
+        kind: "error",
+        error: { code: "providerUnavailable", retryable: true },
+        recovery: {
+          kind: "preview",
+          profile,
+          image: { id: "image-1" },
+        },
+      },
+      {
+        kind: "result",
+        profile,
+        image: { id: "image-1" },
+        facts: response.facts,
+        evaluation: response.evaluation,
+      },
+      {
+        kind: "clarification",
+        profile,
+        image: { id: "image-1" },
+        facts: response.facts,
+        evaluation: response.evaluation,
+        questionId,
+      },
+      {
+        kind: "result",
+        profile,
+        image: { id: "image-1" },
+        facts: response.facts,
+        evaluation: response.evaluation,
+        presentation: "clarificationRevision",
+      },
+    ];
+
+    for (const state of states) {
+      const onClearAll = vi.fn();
+      render(
+        <ApplicationView
+          state={state}
+          dispatch={vi.fn()}
+          saveProfile={saveProfile}
+          imageFlow={{ lifecycle, preparedImage }}
+          analyze={() => new Promise(() => undefined)}
+          onClearAll={onClearAll}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Clear all" }));
+      const dialog = screen.getByRole("dialog", {
+        name: "Clear temporary data?",
+      });
+      await user.click(
+        within(dialog).getByRole("button", { name: "Clear all" }),
+      );
+      expect(onClearAll).toHaveBeenCalledOnce();
+      cleanup();
+    }
+  });
+
+  it("omits Clear All from an empty welcome and announces clear outcomes", () => {
+    const { rerender } = render(
+      <ApplicationView
+        state={{ kind: "welcome", clearPresentation: "cleared" }}
+        dispatch={vi.fn()}
+        saveProfile={saveProfile}
+        onClearAll={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Clear all" })).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Temporary data cleared.",
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "See what we can confirm—and what still needs checking.",
+      }),
+    ).toHaveFocus();
+
+    rerender(
+      <ApplicationView
+        state={{
+          kind: "welcome",
+          clearPresentation: "storedProfileClearFailed",
+        }}
+        dispatch={vi.fn()}
+        saveProfile={saveProfile}
+        onClearAll={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "the saved profile could not be removed",
+    );
+    expect(screen.getByRole("button", { name: "Clear all" })).toBeVisible();
+  });
+
+  it("aborts active analysis on reset and ignores its late completion", async () => {
+    let signal: AbortSignal | undefined;
+    let resolveAnalysis:
+      | ((value: typeof syntheticAnalysisResponses.safe) => void)
+      | undefined;
+    const analyze = vi.fn(
+      (_image, _profile, activeSignal: AbortSignal) =>
+        new Promise<typeof syntheticAnalysisResponses.safe>((resolve) => {
+          signal = activeSignal;
+          resolveAnalysis = resolve;
+        }),
+    );
+    const dispatch = vi.fn();
+    const analyzingState: ApplicationState = {
+      kind: "analyzing",
+      profile,
+      image: { id: "image-1" },
+      requestId: "request-clear",
+    };
+    const view = (
+      state: ApplicationState,
+      onClearAll?: () => void,
+    ) => (
+      <ApplicationView
+        state={state}
+        dispatch={dispatch}
+        saveProfile={saveProfile}
+        imageFlow={{ lifecycle, preparedImage }}
+        analyze={analyze}
+        onClearAll={onClearAll}
+      />
+    );
+    const clear = () => {
+      dispatch({ type: "clearAll" });
+      rendered.rerender(
+        view({
+          kind: "welcome",
+          clearPresentation: "clearingStoredProfile",
+        }),
+      );
+    };
+    const rendered = render(view(analyzingState, clear));
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Clear all",
+      }),
+    );
+
+    expect(signal?.aborted).toBe(true);
+    resolveAnalysis?.(syntheticAnalysisResponses.safe);
+    await Promise.resolve();
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: "analysisSucceeded" }),
+    );
+  });
+
+  it("cleans memory before attempting storage and reports storage failure", async () => {
+    application.state = { kind: "capture", profile };
+    const order: string[] = [];
+    const ownedLifecycle: ImageLifecycle = {
+      ...lifecycle,
+      clear: vi.fn(() => order.push("lifecycle")),
+    };
+    application.dispatch.mockImplementation((event) => {
+      order.push(event.type);
+    });
+    application.clearStoredProfile.mockImplementation(() => {
+      order.push("storage");
+      throw new DOMException("blocked");
+    });
+    render(
+      <AppExperience
+        createLifecycle={vi.fn().mockReturnValue(ownedLifecycle)}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Clear all" }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Clear all",
+      }),
+    );
+
+    expect(order).toEqual(["lifecycle", "clearAll"]);
+    await vi.waitFor(() =>
+      expect(order).toEqual([
+        "lifecycle",
+        "clearAll",
+        "storage",
+        "profileStorageClearCompleted",
+      ]),
+    );
+    expect(application.dispatch).toHaveBeenLastCalledWith({
+      type: "profileStorageClearCompleted",
+      status: "failure",
+    });
+  });
+
+  it("confirmation cancellation preserves the request, storage, and image", async () => {
+    application.state = {
+      kind: "analyzing",
+      profile,
+      image: { id: "image-1" },
+      requestId: "request-preserved",
+    };
+    let signal: AbortSignal | undefined;
+    const analyze = vi.fn(
+      (_image, _profile, activeSignal: AbortSignal) => {
+        signal = activeSignal;
+        return new Promise<typeof syntheticAnalysisResponses.safe>(
+          () => undefined,
+        );
+      },
+    );
+    const onClearAll = vi.fn();
+    render(
+      <ApplicationView
+        state={application.state}
+        dispatch={application.dispatch}
+        saveProfile={saveProfile}
+        imageFlow={{ lifecycle, preparedImage }}
+        analyze={analyze}
+        onClearAll={onClearAll}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Clear all" }),
+    );
+    await vi.waitFor(() => expect(signal).toBeDefined());
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(signal?.aborted).toBe(false);
+    expect(onClearAll).not.toHaveBeenCalled();
+    expect(application.dispatch).not.toHaveBeenCalledWith({ type: "clearAll" });
+    expect(
+      screen.getByRole("img", { name: "Selected image being analyzed" }),
+    ).toHaveAttribute("src", preparedImage.objectUrl);
+  });
+
+  it("repeats lifecycle and reducer clearing idempotently", async () => {
+    application.state = { kind: "capture", profile };
+
+    for (let index = 0; index < 2; index += 1) {
+      const rendered = render(
+        <AppExperience createLifecycle={vi.fn().mockReturnValue(lifecycle)} />,
+      );
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Clear all" }),
+      );
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Clear all",
+        }),
+      );
+      await Promise.resolve();
+      rendered.unmount();
+    }
+
+    expect(lifecycle.clear).toHaveBeenCalledTimes(2);
+    expect(application.dispatch).toHaveBeenCalledWith({ type: "clearAll" });
   });
 
   it("owns one lifecycle across rerenders and ignores visibility changes", () => {

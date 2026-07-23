@@ -172,4 +172,46 @@ describe("useApplicationState", () => {
       expect(restored.result.current.state.kind).toBe("welcome"),
     );
   });
+
+  it("clears only the namespaced stored profile", async () => {
+    window.sessionStorage.setItem(
+      SESSION_PROFILE_STORAGE_KEY,
+      JSON.stringify({ schemaVersion: 1, profile }),
+    );
+    window.sessionStorage.setItem("unrelated", "preserve");
+    const { result } = renderHook(() => useApplicationState());
+    await waitFor(() => expect(result.current.state.kind).toBe("capture"));
+
+    let clearResult;
+    act(() => {
+      clearResult = result.current.clearStoredProfile();
+    });
+
+    expect(clearResult).toEqual({ status: "success" });
+    expect(
+      window.sessionStorage.getItem(SESSION_PROFILE_STORAGE_KEY),
+    ).toBeNull();
+    expect(window.sessionStorage.getItem("unrelated")).toBe("preserve");
+  });
+
+  it("returns a safe failure when stored-profile deletion throws", async () => {
+    const { result } = renderHook(() => useApplicationState());
+    await waitFor(() => expect(result.current.state.kind).toBe("welcome"));
+    const removeItem = vi
+      .spyOn(Storage.prototype, "removeItem")
+      .mockImplementation(() => {
+        throw new DOMException("blocked");
+      });
+
+    let clearResult;
+    act(() => {
+      clearResult = result.current.clearStoredProfile();
+    });
+
+    expect(clearResult).toEqual({
+      status: "error",
+      reason: "clearFailed",
+    });
+    removeItem.mockRestore();
+  });
 });

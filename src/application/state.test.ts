@@ -309,11 +309,109 @@ describe("applicationReducer", () => {
     });
   });
 
-  it("clears every state back to welcome", () => {
-    for (const state of [initialApplicationState, analyzingState]) {
+  it("clears every reachable state and all sensitive fields back to welcome", () => {
+    const response = syntheticAnalysisResponses.needMoreInformation;
+    const questionId = response.evaluation.clarificationQuestions[0].id;
+    const states: ApplicationState[] = [
+      initialApplicationState,
+      { kind: "welcome" },
+      { kind: "profile", profile },
+      { kind: "capture", profile },
+      {
+        kind: "preparingImage",
+        profile,
+        image: { id: "image-1" },
+      },
+      { kind: "preview", profile, image: { id: "image-1" } },
+      analyzingState,
+      {
+        kind: "error",
+        error: retryableError,
+        recovery: {
+          kind: "preview",
+          profile,
+          image: { id: "image-1" },
+        },
+      },
+      {
+        kind: "result",
+        profile,
+        image: { id: "image-1" },
+        facts: response.facts,
+        evaluation: response.evaluation,
+      },
+      {
+        kind: "clarification",
+        profile,
+        image: { id: "image-1" },
+        facts: response.facts,
+        evaluation: response.evaluation,
+        questionId,
+      },
+      {
+        kind: "result",
+        profile,
+        image: { id: "image-1" },
+        facts: response.facts,
+        evaluation: response.evaluation,
+        presentation: "clarificationRevision",
+      },
+    ];
+
+    for (const state of states) {
       expect(applicationReducer(state, { type: "clearAll" })).toEqual({
         kind: "welcome",
+        clearPresentation: "clearingStoredProfile",
       });
     }
+  });
+
+  it("records storage-clear outcomes only as transient welcome presentation", () => {
+    const clearing: ApplicationState = {
+      kind: "welcome",
+      clearPresentation: "clearingStoredProfile",
+    };
+
+    expect(
+      applicationReducer(clearing, {
+        type: "profileStorageClearCompleted",
+        status: "success",
+      }),
+    ).toEqual({ kind: "welcome", clearPresentation: "cleared" });
+    expect(
+      applicationReducer(clearing, {
+        type: "profileStorageClearCompleted",
+        status: "failure",
+      }),
+    ).toEqual({
+      kind: "welcome",
+      clearPresentation: "storedProfileClearFailed",
+    });
+    expect(
+      applicationReducer(analyzingState, {
+        type: "profileStorageClearCompleted",
+        status: "failure",
+      }),
+    ).toBe(analyzingState);
+  });
+
+  it("ignores late analysis events after clearing", () => {
+    const cleared = applicationReducer(analyzingState, { type: "clearAll" });
+
+    expect(
+      applicationReducer(cleared, {
+        type: "analysisSucceeded",
+        requestId: "request-1",
+        facts,
+        evaluation,
+      }),
+    ).toBe(cleared);
+    expect(
+      applicationReducer(cleared, {
+        type: "analysisFailed",
+        requestId: "request-1",
+        error: retryableError,
+      }),
+    ).toBe(cleared);
   });
 });

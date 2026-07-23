@@ -47,5 +47,11 @@ export const useApplicationState = () => {
     [],
   );
 
-  return { state, dispatch, saveProfile } as const;
+  const clearStoredProfile = useCallback(
+    (): ProfileStorageOperationResult =>
+      getSessionProfileStorage().clear(),
+    [],
+  );
+
+  return { state, dispatch, saveProfile, clearStoredProfile } as const;
 };
