@@ -10,6 +10,7 @@ import {
   clarificationQuestionSchema,
   evaluationResultSchema,
   factPatchSchema,
+  ruleMatchSchema,
   verdictSchema,
 } from "@/domain/evaluation";
 import {
@@ -238,6 +239,58 @@ describe("evaluation and clarification contracts", () => {
       reasons: [validReason, validReason, validReason, validReason],
     });
   });
+
+  it.each(["triggered", "uncertain"] as const)(
+    "requires a verdict for a %s rule match",
+    (status) => {
+      const match = {
+        rule: {
+          id: "allergy-example",
+          version: "1.0.0",
+          restriction: "allergy",
+        },
+        status,
+        risk: "high",
+        recommendedVerdict: "avoid",
+        reasonKey: "allergy-example",
+        evidenceIds: [],
+        missingFactIds: [],
+        evidenceConfidence: "high",
+      };
+
+      expect(ruleMatchSchema.safeParse(match).success).toBe(true);
+      expectRejected(ruleMatchSchema, {
+        ...match,
+        recommendedVerdict: null,
+      });
+    },
+  );
+
+  it.each(["cleared", "notApplicable"] as const)(
+    "requires a null verdict for a %s rule match",
+    (status) => {
+      const match = {
+        rule: {
+          id: "allergy-example",
+          version: "1.0.0",
+          restriction: "allergy",
+        },
+        status,
+        risk: "informational",
+        recommendedVerdict: null,
+        reasonKey: "allergy-example",
+        evidenceIds: [],
+        missingFactIds: [],
+        evidenceConfidence: "high",
+      };
+
+      expect(ruleMatchSchema.safeParse(match).success).toBe(true);
+      expectRejected(ruleMatchSchema, {
+        ...match,
+        recommendedVerdict: "safe",
+      });
+    },
+  );
 
   it("rejects non-user-provided clarification patches", () => {
     expectRejected(factPatchSchema, {

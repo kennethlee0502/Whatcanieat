@@ -40,18 +40,45 @@ export const ruleDescriptorSchema = z
   })
   .strict();
 
-export const ruleMatchSchema = z
-  .object({
-    rule: ruleDescriptorSchema,
-    status: z.enum(["triggered", "uncertain", "cleared", "notApplicable"]),
-    risk: z.enum(["critical", "high", "moderate", "informational"]),
-    recommendedVerdict: verdictSchema,
-    reasonKey: domainIdentifierSchema,
-    evidenceIds: evidenceIdsSchema,
-    missingFactIds: z.array(domainIdentifierSchema).max(20),
-    evidenceConfidence: confidenceLevelSchema,
-  })
-  .strict();
+const ruleMatchShape = {
+  rule: ruleDescriptorSchema,
+  risk: z.enum(["critical", "high", "moderate", "informational"]),
+  reasonKey: domainIdentifierSchema,
+  evidenceIds: evidenceIdsSchema,
+  missingFactIds: z.array(domainIdentifierSchema).max(20),
+  evidenceConfidence: confidenceLevelSchema,
+} as const;
+
+export const ruleMatchSchema = z.discriminatedUnion("status", [
+  z
+    .object({
+      ...ruleMatchShape,
+      status: z.literal("triggered"),
+      recommendedVerdict: verdictSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...ruleMatchShape,
+      status: z.literal("uncertain"),
+      recommendedVerdict: verdictSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...ruleMatchShape,
+      status: z.literal("cleared"),
+      recommendedVerdict: z.null(),
+    })
+    .strict(),
+  z
+    .object({
+      ...ruleMatchShape,
+      status: z.literal("notApplicable"),
+      recommendedVerdict: z.null(),
+    })
+    .strict(),
+]);
 
 export const factPatchSchema = z.discriminatedUnion("kind", [
   z
