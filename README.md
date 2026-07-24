@@ -70,6 +70,16 @@ This makes every recommendation:
 
 ---
 
+## Why Mobile First
+
+This was intentionally designed as a mobile-first web application.
+
+People don't decide whether they can eat something while sitting in front of a desktop computer. They make that decision in restaurants, grocery stores, cafeterias, or at the dinner table.
+
+Taking a photo and getting an answer within a few seconds felt like the natural experience.
+
+I also believe more and more people experience software primarily through their phones. Designing for mobile first wasn't just a UI decision—it was a product decision.
+
 ## Architecture
 
 Current architecture:
