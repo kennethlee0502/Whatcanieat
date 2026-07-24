@@ -725,6 +725,7 @@ describe("complete rule engine", () => {
     });
     const result = evaluateFood(
       {
+        pregnancy: {},
         allergies: [{ allergenId: "peanut" }],
         highBloodPressure: true,
         diet: "vegan",
@@ -733,6 +734,15 @@ describe("complete rule engine", () => {
     );
     expect(result.verdict).toBe("avoid");
     expect(result.clarificationQuestions).toEqual([]);
+    expect(
+      new Set(
+        result.ruleMatches.flatMap(({ recommendedVerdict }) =>
+          recommendedVerdict === null ? [] : [recommendedVerdict],
+        ),
+      ),
+    ).toEqual(
+      new Set(["avoid", "needMoreInformation", "safeWithCaution"]),
+    );
   });
 
   it("keeps high-confidence Avoid high without contradictions", () => {

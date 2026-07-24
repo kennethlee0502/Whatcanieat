@@ -7,9 +7,13 @@ import {
   type FactPatch,
 } from "@/domain/evaluation";
 import type { ExtractedFoodFacts } from "@/domain/food";
+import { createAnalysisProfileContext } from "@/domain/profile-operations";
 import type { UserProfile } from "@/domain/profile";
 import { syntheticAnalysisResponses } from "@/lib/mock-analysis";
-import { ENGINE_RULE_SET_VERSION } from "@/rules/engine";
+import {
+  ENGINE_RULE_SET_VERSION,
+  evaluateFood,
+} from "@/rules/engine";
 
 const allergyProfile: UserProfile = {
   pregnancy: { status: "notPregnant" },
@@ -115,6 +119,12 @@ describe("resolveClarification", () => {
       expect(resolution.evaluation.verdict).toBe("avoid");
       expect(resolution.evaluation.ruleSetVersion).toBe(
         response.evaluation.ruleSetVersion,
+      );
+      expect(resolution.evaluation).toEqual(
+        evaluateFood(
+          createAnalysisProfileContext(allergyProfile),
+          resolution.facts,
+        ),
       );
     }
   });

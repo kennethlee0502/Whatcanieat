@@ -421,7 +421,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Tasks 3–4 and 11.
 
-## ⬜ Task 20 — Implement the server-only provider adapter
+## ✅ Task 20 — Implement the server-only provider adapter
 
 **Goal:** Translate the provider-neutral extraction contract into an OpenAI image request.
 
@@ -441,7 +441,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Task 19.
 
-## ⬜ Task 21 — Implement the analysis endpoint and deterministic pipeline
+## ✅ Task 21 — Implement the analysis endpoint and deterministic pipeline
 
 **Goal:** Provide one secure route from validated upload to deterministic response.
 
@@ -463,7 +463,7 @@ Do not change task order or scope without explicit approval.
 
 **Dependencies:** Tasks 16 and 19–20.
 
-## ⬜ Task 22 — Integrate real client analysis
+## ✅ Task 22 — Integrate real client analysis
 
 **Goal:** Replace mock submission with the validated server pipeline.
 
