@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   type FormEvent,
   type RefCallback,
@@ -340,7 +340,7 @@ export const ProfileSetup = ({
   };
 
   const transition = {
-    duration: prefersReducedMotion ? 0 : 0.26,
+    duration: prefersReducedMotion ? 0 : 0.22,
     ease: [0.22, 1, 0.36, 1] as const,
   };
 
@@ -354,109 +354,106 @@ export const ProfileSetup = ({
       </header>
 
       <form ref={formRef} onSubmit={continueFromStep} noValidate>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            className={styles.step}
-            key={step}
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
-            transition={transition}
-          >
-            {step === 0 ? (
-              <PregnancyStep
-                draft={draft}
-                updateDraft={updateDraft}
-                headingRef={headingRef}
-                error={stepError}
-              />
-            ) : null}
-            {step === 1 ? (
-              <AllergyStep
-                draft={draft}
-                updateDraft={updateDraft}
-                headingRef={headingRef}
-                allergyLabel={allergyLabel}
-                setAllergyLabel={setAllergyLabel}
-                addAllergy={addAllergy}
-                allergyError={allergyError}
-                clearAllergyError={() => setAllergyError(null)}
-                updateAllergySeverity={updateAllergySeverity}
-              />
-            ) : null}
-            {step === 2 ? (
-              <BloodPressureStep
-                draft={draft}
-                updateDraft={updateDraft}
-                headingRef={headingRef}
-                error={stepError}
-              />
-            ) : null}
-            {step === 3 ? (
-              <DietStep
-                draft={draft}
-                updateDraft={updateDraft}
-                headingRef={headingRef}
-                error={stepError}
-              />
-            ) : null}
-            {step === 4 ? (
-              <MeasurementsStep
-                draft={draft}
-                updateDraft={updateDraft}
-                headingRef={headingRef}
-                error={stepError}
-              />
-            ) : null}
+        <motion.div
+          className={styles.step}
+          key={step}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={transition}
+        >
+          {step === 0 ? (
+            <PregnancyStep
+              draft={draft}
+              updateDraft={updateDraft}
+              headingRef={headingRef}
+              error={stepError}
+            />
+          ) : null}
+          {step === 1 ? (
+            <AllergyStep
+              draft={draft}
+              updateDraft={updateDraft}
+              headingRef={headingRef}
+              allergyLabel={allergyLabel}
+              setAllergyLabel={setAllergyLabel}
+              addAllergy={addAllergy}
+              allergyError={allergyError}
+              clearAllergyError={() => setAllergyError(null)}
+              updateAllergySeverity={updateAllergySeverity}
+            />
+          ) : null}
+          {step === 2 ? (
+            <BloodPressureStep
+              draft={draft}
+              updateDraft={updateDraft}
+              headingRef={headingRef}
+              error={stepError}
+            />
+          ) : null}
+          {step === 3 ? (
+            <DietStep
+              draft={draft}
+              updateDraft={updateDraft}
+              headingRef={headingRef}
+              error={stepError}
+            />
+          ) : null}
+          {step === 4 ? (
+            <MeasurementsStep
+              draft={draft}
+              updateDraft={updateDraft}
+              headingRef={headingRef}
+              error={stepError}
+            />
+          ) : null}
 
-            {storageError ? (
-              <div className={styles.storageError} role="alert">
-                <p>{storageError}</p>
-              </div>
-            ) : null}
-
-            <div className={styles.actions}>
-              <button className={styles.primaryAction} type="submit">
-                {storageError
-                  ? "Retry saving"
-                  : step === 4
-                    ? initialProfile
-                      ? "Update profile"
-                      : "Save profile"
-                    : "Continue"}
-              </button>
-              {storageError && profilePendingStorage ? (
-                <button
-                  className={styles.secondaryAction}
-                  type="button"
-                  onClick={() =>
-                    onContinueWithoutSaving(profilePendingStorage)
-                  }
-                >
-                  Continue without saving
-                </button>
-              ) : null}
-              {!storageError && step > 0 ? (
-                <button
-                  className={styles.secondaryAction}
-                  type="button"
-                  onClick={goBack}
-                >
-                  Back
-                </button>
-              ) : null}
-              {onCancelEditing ? (
-                <button
-                  className={styles.tertiaryAction}
-                  type="button"
-                  onClick={onCancelEditing}
-                >
-                  Cancel editing
-                </button>
-              ) : null}
+          {storageError ? (
+            <div className={styles.storageError} role="alert">
+              <p>{storageError}</p>
             </div>
-          </motion.div>
-        </AnimatePresence>
+          ) : null}
+
+          <div className={styles.actions}>
+            <button className={styles.primaryAction} type="submit">
+              {storageError
+                ? "Retry saving"
+                : step === 4
+                  ? initialProfile
+                    ? "Update profile"
+                    : "Save profile"
+                  : "Continue"}
+            </button>
+            {storageError && profilePendingStorage ? (
+              <button
+                className={styles.secondaryAction}
+                type="button"
+                onClick={() =>
+                  onContinueWithoutSaving(profilePendingStorage)
+                }
+              >
+                Continue without saving
+              </button>
+            ) : null}
+            {!storageError && step > 0 ? (
+              <button
+                className={styles.secondaryAction}
+                type="button"
+                onClick={goBack}
+              >
+                Back
+              </button>
+            ) : null}
+            {onCancelEditing ? (
+              <button
+                className={styles.tertiaryAction}
+                type="button"
+                onClick={onCancelEditing}
+              >
+                Cancel editing
+              </button>
+            ) : null}
+          </div>
+        </motion.div>
       </form>
     </main>
   );
