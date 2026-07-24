@@ -322,6 +322,14 @@
   text-underline-offset: 0.2em;
 }
 
+@media (max-width: 35.999rem) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+}
+
 .srOnly {
   position: absolute;
   width: 1px;
